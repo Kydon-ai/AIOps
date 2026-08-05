@@ -27,6 +27,7 @@ class Settings(BaseSettings):
 
     # DashScope 配置
     dashscope_api_key: str = os.getenv('DASHSCOPE_API_KEY',"")  # 默认空字符串，实际使用需从环境变量加载
+    dashscope_api_base:str = os.getenv('DASHSCOPE_API_BASE',"")
     dashscope_model: str = "qwen-max"
     dashscope_embedding_model: str = "text-embedding-v4"  # v4 支持多种维度（默认 1024）
 
