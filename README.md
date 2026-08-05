@@ -65,7 +65,7 @@ docker compose up -d
 ```
 > 我这是windows的，其他的举一反三
 
-#### 1.4.2安装Prometheus监控红菊
+#### 1.4.2安装Prometheus监控工具
 ```powershell
 docker run -d --name prometheus  -p 9090:9090 -v ${PWD}\prometheus.yml:/etc/prometheus/prometheus.yml  -v ${PWD}\alerts.yml:/etc/prometheus/alerts.yml prom/prometheus
 ```
