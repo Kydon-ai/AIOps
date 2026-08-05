@@ -3,6 +3,7 @@
 使用 Pydantic Settings 实现类型安全的配置管理
 """
 
+import os
 from typing import  Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -21,11 +22,11 @@ class Settings(BaseSettings):
     app_name: str = "SuperBizAgent"
     app_version: str = "1.0.0"
     debug: bool = False
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"
     port: int = 9900
 
     # DashScope 配置
-    dashscope_api_key: str = ""  # 默认空字符串，实际使用需从环境变量加载
+    dashscope_api_key: str = os.getenv('DASHSCOPE_API_KEY',"")  # 默认空字符串，实际使用需从环境变量加载
     dashscope_model: str = "qwen-max"
     dashscope_embedding_model: str = "text-embedding-v4"  # v4 支持多种维度（默认 1024）
 

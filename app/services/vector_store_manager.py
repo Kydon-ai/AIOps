@@ -1,6 +1,4 @@
 """向量存储管理器 - 封装 Milvus VectorStore 操作"""
-
-# from langchain_milvus.vectorstores.milvus import Milvus
 from langchain_core.documents import Document
 from langchain_milvus import Milvus
 from loguru import logger

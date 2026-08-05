@@ -1,144 +1,95 @@
+"""FastAPI 应用入口
 
-from pathlib import Path
-import logging
+主应用程序，配置路由、中间件、静态文件等
+"""
 
-from fastapi import File, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from contextlib import asynccontextmanager
+import os
 
-from app.api.file import ALLOWED_EXTENSIONS, MAX_FILE_SIZE, UPLOAD_DIR, router
-from app.services.vector_index_service import vector_index_service
+from app.config import config
+from loguru import logger
+from app.api import chat, health, file, aiops
+from app.core.milvus_client import milvus_manager
+from dotenv import load_dotenv
 
-logger = logging.getLogger(__name__)
+_ = load_dotenv()
 
-from app.services.vector_store_manager import vector_store_manager
-from app.services.document_splitter_service import document_splitter_service
-
-def index_single_file(self, file_path: str):
-    """
-    索引单个文件 (使用新的 LangChain 分割器)
-
-    Args:
-        file_path: 文件路径
-
-    Raises:
-        ValueError: 文件不存在时抛出
-        RuntimeError: 索引失败时抛出
-    """
-    path = Path(file_path).resolve()
-
-    if not path.exists() or not path.is_file():
-        raise ValueError(f"文件不存在: {file_path}")
-
-    logger.info(f"开始索引文件: {path}")
-
-    try:
-        # 1. 读取文件内容
-        content = path.read_text(encoding="utf-8")
-        logger.info(f"读取文件: {path}, 内容长度: {len(content)} 字符")
-
-        # 2. 删除该文件的旧数据（如果存在）
-        normalized_path = path.as_posix()
-        vector_store_manager.delete_by_source(normalized_path)
-
-        # 3. 使用文档分割器切分文档
-        documents = document_splitter_service.split_document(content, normalized_path)
-        logger.info(f"文档分割完成: {file_path} -> {len(documents)} 个分片")
-
-        # 4. 添加文档到向量存储（自动完成 Embedding + 入库）
-        if documents:
-            vector_store_manager.add_documents(documents)
-            logger.info(f"文件索引完成: {file_path}, 共 {len(documents)} 个分片")
-        else:
-            logger.warning(f"文件内容为空或无法分割: {file_path}")
-
-    except Exception as e:
-        logger.error(f"索引文件失败: {file_path}, 错误: {e}")
-        raise RuntimeError(f"索引文件失败: {e}") from e
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理"""
+    # 启动时执行
+    logger.info("=" * 60)
+    logger.info(f"🚀 {config.app_name} v{config.app_version} 启动中...")
+    logger.info(f"📝 环境: {'开发' if config.debug else '生产'}")
+    logger.info(f"🌐 监听地址: http://{config.host}:{config.port}")
+    logger.info(f"📚 API 文档: http://{config.host}:{config.port}/docs")
+    
+    # 连接 Milvus
+    logger.info("🔌 正在连接 Milvus...")
+    milvus_manager.connect()
+    logger.info("✅ Milvus 连接成功")
+    
+    logger.info("=" * 60)
+    
+    yield
+    
+    # 关闭时执行
+    logger.info("🔌 正在关闭 Milvus 连接...")
+    milvus_manager.close()
+    logger.info(f"👋 {config.app_name} 关闭")
 
 
+# 创建 FastAPI 应用
+app = FastAPI(
+    title=config.app_name,
+    version=config.app_version,
+    description="基于 LangChain 的智能oncall运维系统",
+    lifespan=lifespan
+)
 
-@router.post(path="/upload")
-async def upload_file(file: UploadFile = File(...)):
-    # 1. 验证文件名
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="文件名不能为空")
+# 配置 CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 生产环境应该限制具体域名
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    # 2. 规范化文件名（去除空格和特殊字符）
-    safe_filename = _sanitize_filename(file.filename)
+# 注册路由
+app.include_router(health.router, tags=["健康检查"])
+app.include_router(chat.router, prefix="/api", tags=["对话"])
+app.include_router(file.router, prefix="/api", tags=["文件管理"])
+app.include_router(aiops.router, prefix="/api", tags=["AIOps智能运维"])
 
-    # 3. 验证文件扩展名（仅支持 txt / md）
-    file_extension = _get_file_extension(safe_filename)
-    if file_extension not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail=f"不支持的文件格式，仅支持: {', '.join(ALLOWED_EXTENSIONS)}")
+# 挂载静态文件
+static_dir = "static"
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-    # 4. 确保上传目录存在
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
-    # 5. 保存文件（如果已存在则覆盖）
-    file_path = UPLOAD_DIR / safe_filename
-    if file_path.exists():
-        logger.info(f"文件已存在，将覆盖: {file_path}")
-        file_path.unlink()
-
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:  # 最大 10MB
-        raise HTTPException(status_code=400, detail="文件大小超过限制（最大 10MB）")
-
-    file_path.write_bytes(content)
-    logger.info(f"文件上传成功: {file_path}")
-
-    # 6. 自动创建向量索引（即使索引失败文件上传依然成功）
-    try:
-        vector_index_service.index_single_file(str(file_path))
-        logger.info(f"向量索引创建成功: {file_path}")
-    except Exception as e:
-        logger.error(f"向量索引创建失败: {file_path}, 错误: {e}")
-
-    # 7. 返回响应
-    return JSONResponse(status_code=200, content={
-        "code": 200,
-        "message": "success",
-        "data": {
-            "filename": safe_filename,
-            "file_path": str(file_path),
-            "size": len(content),
-        },
-    })
+@app.get("/")
+async def root():
+    """返回首页"""
+    index_path = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {
+        "message": f"Welcome to {config.app_name} API",
+        "version": config.app_version,
+        "docs": "/docs"
+    }
 
 
-def _get_file_extension(filename: str) -> str:
-    """
-    获取文件扩展名
-
-    Args:
-        filename: 文件名
-
-    Returns:
-        str: 扩展名（小写，不含点）
-    """
-    parts = filename.rsplit(".", 1)
-    if len(parts) == 2:
-        return parts[1].lower()
-    return ""
-
-
-def _sanitize_filename(filename: str) -> str:
-    """
-    规范化文件名，去除空格和特殊字符
-
-    Args:
-        filename: 原始文件名
-
-    Returns:
-        str: 规范化后的文件名
-    """
-    # 去除空格
-    sanitized = filename.replace(" ", "_")
-    # 去除其他可能导致问题的字符
-    for char in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']:
-        sanitized = sanitized.replace(char, "_")
-    return sanitized
-
-
-if __name__=="__main__":
-    pass
+if __name__ == "__main__":
+    import uvicorn
+    
+    uvicorn.run(
+        "main:app",
+        host=config.host,
+        port=config.port,
+        reload=config.debug,
+        log_level="info"
+    )
