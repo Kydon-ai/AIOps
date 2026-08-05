@@ -3,9 +3,7 @@
 from langchain_core.embeddings import Embeddings
 from openai import OpenAI
 from loguru import logger
-
 from app.config import config
-
 
 class DashScopeEmbeddings(Embeddings):
     """阿里云 DashScope Text Embedding (OpenAI 兼容模式)

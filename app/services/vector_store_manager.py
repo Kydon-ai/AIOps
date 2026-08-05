@@ -1,7 +1,6 @@
 """向量存储管理器 - 封装 Milvus VectorStore 操作"""
 
-from typing import List
-
+# from langchain_milvus.vectorstores.milvus import Milvus
 from langchain_core.documents import Document
 from langchain_milvus import Milvus
 from loguru import logger
@@ -39,7 +38,7 @@ class VectorStoreManager:
 
             # 创建 LangChain Milvus VectorStore
             # 使用 biz collection，字段映射：text_field -> content, vector_field -> vector
-            self.vector_store = Milvus(
+            self.vector_store: Milvus | None = Milvus(
                 embedding_function=vector_embedding_service,
                 collection_name=self.collection_name,
                 connection_args=connection_args,
@@ -60,7 +59,7 @@ class VectorStoreManager:
             logger.error(f"VectorStore 初始化失败: {e}")
             raise
 
-    def add_documents(self, documents: List[Document]) -> List[str]:
+    def add_documents(self, documents: list[Document]) -> list[str]:
         """
         批量添加文档到向量存储（自动批量向量化）
 
@@ -68,7 +67,7 @@ class VectorStoreManager:
             documents: 文档列表
 
         Returns:
-            List[str]: 文档 ID 列表
+            list[str]: 文档 ID 列表
         """
         try:
             import time
@@ -120,7 +119,7 @@ class VectorStoreManager:
             logger.warning(f"删除旧数据失败 (可能是首次索引): {e}")
             return 0
 
-    def get_vector_store(self) -> Milvus:
+    def get_vector_store(self) -> Milvus | None:
         """
         获取 VectorStore 实例
 
@@ -129,7 +128,7 @@ class VectorStoreManager:
         """
         return self.vector_store
 
-    def similarity_search(self, query: str, k: int = 3) -> List[Document]:
+    def similarity_search(self, query: str, k: int = 3) -> list[Document]:
         """
         相似度搜索
 
@@ -138,7 +137,7 @@ class VectorStoreManager:
             k: 返回结果数量
 
         Returns:
-            List[Document]: 相关文档列表
+            list[Document]: 相关文档列表
         """
         try:
             docs = self.vector_store.similarity_search(query, k=k)

@@ -3,7 +3,7 @@
 使用 Pydantic Settings 实现类型安全的配置管理
 """
 
-from typing import Dict, Any
+from typing import  Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     prometheus_request_timeout: float = 10.0
 
     @property
-    def mcp_servers(self) -> Dict[str, Dict[str, Any]]:
+    def mcp_servers(self) -> dict[str, dict[str, Any]]:
         """获取完整的 MCP 服务器配置"""
         return {
             "cls": {
