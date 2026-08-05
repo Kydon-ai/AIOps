@@ -330,24 +330,15 @@ class RagAgentService:
             list: 消息历史列表 [{"role": "user|assistant", "content": "...", "timestamp": "..."}]
         """
         try:
-            # 使用 checkpointer 的 get 方法获取最新的检查点
+            # 当前版本 MemorySaver.get() 直接返回 checkpoint 字典，
+            # 如果需要 CheckpointTuple，应调用 get_tuple()。
             config = {"configurable": {"thread_id": session_id}}
-            
-            # 获取该 thread 的最新检查点
-            checkpoint_tuple = self.checkpointer.get(config)
-            
-            if not checkpoint_tuple:
+            checkpoint_data = self.checkpointer.get(config)
+
+            if not checkpoint_data:
                 logger.info(f"获取会话历史: {session_id}, 消息数量: 0")
                 return []
-            
-            # checkpoint_tuple 可能是命名元组或普通元组，安全地提取 checkpoint
-            # 通常第一个元素是 checkpoint 数据
-            if hasattr(checkpoint_tuple, 'checkpoint'):
-                checkpoint_data = checkpoint_tuple.checkpoint  # type: ignore
-            else:
-                # 如果是普通元组，第一个元素是 checkpoint
-                checkpoint_data = checkpoint_tuple[0] if checkpoint_tuple else {}
-            
+
             # 从检查点中提取消息
             messages = checkpoint_data.get("channel_values", {}).get("messages", [])
             
