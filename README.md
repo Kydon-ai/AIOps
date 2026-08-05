@@ -1,0 +1,131 @@
+# Intelligent On-call
+
+智能on-call项目旨在自动化运维过程，尽可能根据服务日志自动分析，自动解决告警问题，最终达到减轻人力负担，提升个人效率的目的。本项目推荐用于个人服务器运维监控。
+
+## 1.快速开始
+
+### 1.1环境安装
+环境前提：安装最新版uv和node。
+我的版本：uv 0.10.4 (079e3fd05 2026-02-17)、node v22.16.0
+
+uv安装指南：https://uv.doczh.com/getting-started/installation/
+
+node安装指南：https://nvm.uihtm.com/doc/guide.html
+
+docker安装指南：https://github.com/asxez/DockerDesktop-CN/releases
+
+> 直接安装应用就好，*unix则可以添加docker源之后apt安装
+
+### 1.2密钥获取
+#### 1.2.1获取腾讯云CLS MCP
+前往[腾讯云](https://console.cloud.tencent.com/cam/capi)，创建一个密钥，记住SECRET_ID和SECRET_KEY
+创建目录app\envs\8003和目录app\envs\8004，分别放一个相同内容的.env
+```env
+TRANSPORT=sse
+TENCENTCLOUD_SECRET_ID="************"
+TENCENTCLOUD_SECRET_KEY="************"
+TZ=Asia/Shanghai
+PORT=8003 # 一个填8003，一个填8004
+```
+> 这个项目其实没有实际的日志活动，我们只要跑通，chat过程中能获取到工具就行了
+
+#### 1.2.2配置LLM密钥
+前往[阿里百炼](https://bailian.console.aliyun.com/cn-beijing?tab=model#/api-key)，以创建api_key,填写到.env当中
+
+
+### 1.3依赖安装
+#### 1.3.1安装python项目依赖
+
+uv安装依赖：uv sync
+
+#### 1.3.2安装node MCP服务
+切换到app\envs\8003，执行命令：
+```bash
+npx -y cls-mcp-server@latest
+```
+
+切换到app\envs\8004，执行命令：
+```bash
+npx -y cls-mcp-server@latest
+```
+> 请完成好1.2再执行这一步
+
+### 1.4服务安装
+
+#### 1.4.1安装milvus向量数据库
+```powershell
+Invoke-WebRequest https://github.com/milvus-io/milvus/releases/download/v3.0.0/milvus-standalone-docker-compose.yml -OutFile docker-compose.yml
+
+docker compose up -d
+```
+> 我这是windows的，其他的举一反三
+
+#### 1.4.2安装Prometheus监控红菊
+```powershell
+docker run -d --name prometheus  -p 9090:9090 -v ${PWD}\prometheus.yml:/etc/prometheus/prometheus.yml  -v ${PWD}\alerts.yml:/etc/prometheus/alerts.yml prom/prometheus
+```
+
+### 1.5 启动项目
+
+根目录下执行：
+```bash
+uv run main.py
+```
+
+然后打开http://127.0.0.1:9900/，开始聊天就行了
+
+> 可能有些东西没讲到，但是大概率都是小问题了，可以多问问AI就能解决了
+
+## 2.项目结构参考
+```bash
+.                     
+├── README.md
+├── app
+│   ├── agent
+│   │   ├── aiops
+│   │   │   ├── __init__.py
+│   │   │   ├── executor.py
+│   │   │   ├── planner.py
+│   │   │   ├── replanner.py
+│   │   │   ├── state.py
+│   │   │   └── utils.py
+│   │   └── mcp_client.py
+│   ├── api
+│   │   ├── aiops.py
+│   │   ├── chat.py
+│   │   ├── file.py
+│   │   └── health.py
+│   ├── config.py
+│   ├── core
+│   │   └── milvus_client.py
+│   ├── envs
+│   │   ├── 8003
+│   │   └── 8004
+│   ├── models
+│   │   ├── aiops.py
+│   │   ├── request.py
+│   │   └── response.py
+│   ├── services
+│   │   ├── aiops_service.py
+│   │   ├── document_splitter_service.py
+│   │   ├── rag_agent_service.py
+│   │   ├── vector_embedding_service.py
+│   │   ├── vector_index_service.py
+│   │   ├── vector_search_service.py
+│   │   └── vector_store_manager.py
+│   ├── tools
+│   │   ├── __init__.py
+│   │   ├── knowledge_tool.py
+│   │   ├── query_metrics_alerts.py
+│   │   └── time_tool.py
+│   └── utils.py
+├── main.py
+├── pyproject.toml
+├── static
+│   ├── app.js
+│   ├── index.html
+│   └── styles.css
+├── uploads
+│   └── xxxx.md
+└── uv.lock
+```
