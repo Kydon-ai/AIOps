@@ -3,10 +3,10 @@
 智能on-call项目旨在自动化运维过程，尽可能根据服务日志自动分析，自动解决告警问题，最终达到减轻人力负担，提升个人效率的目的。本项目推荐用于个人服务器运维监控。
 
 运行效果——AI聊天截图
-![AI聊天截图](assets\ec28ae29-4d34-4634-b577-2b72dde2c288.png)
+![AI聊天截图](https://github.com/Kydon-ai/Intelligent-On-call/blob/master/assets/ec28ae29-4d34-4634-b577-2b72dde2c287.png)
 
 运行效果——AI排查截图
-![AI排查截图](assets\ec28ae29-4d34-4634-b577-2b72dde2c287.png)
+![AI排查截图](https://github.com/Kydon-ai/Intelligent-On-call/blob/master/assets/ec28ae29-4d34-4634-b577-2b72dde2c287.png)
 ## 1.快速开始
 
 ### 1.1环境安装
