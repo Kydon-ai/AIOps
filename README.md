@@ -137,3 +137,40 @@ uv run main.py
 
 # 说明
 本项目仅供个人钻研于学习使用！
+
+## 自动运维配置
+
+应用支持三种运行方式：
+
+1. 用户通过聊天主动请求诊断或处理；
+2. 后台每小时执行一次只读巡查；
+3. 后台每 60 秒轮询 Prometheus，新进入 `firing` 的告警会触发自动诊断。
+
+自动运维使用本地工具：
+
+- `query_prometheus_alerts`：获取当前 pending/firing 告警；
+- `query_prometheus_metrics`：执行只读 PromQL；
+- `read_skill`：读取 `skills/<name>/SKILL.md`；
+- `read_service_logs`：读取白名单 systemd 服务日志；
+- `restart_http_service`：仅重启配置白名单中的服务。
+
+服务器上建议配置：
+
+```env
+PROMETHEUS_BASE_URL=http://127.0.0.1:9090
+AUTOMATION_ENABLED=true
+AUTOMATION_ALERT_POLL_INTERVAL=60
+AUTOMATION_PATROL_INTERVAL=3600
+AUTO_INDEX_CONVERSATIONS=true
+SKILLS_DIR=./skills
+
+# 默认关闭，确认权限和 Skill 完整后再打开
+SERVICE_RESTART_ENABLED=false
+MANAGED_HTTP_SERVICES='{"rag":"rag.service"}'
+```
+
+`restart_http_service` 使用 `systemctl`，应用进程需要拥有对应服务的重启权限。没有 Skill、证据不足或服务不在白名单时，Agent 不应执行重启。
+
+自动巡查和告警诊断报告会写入 `data/operation_records/` 并自动索引到 Milvus；用户对话在完成后也会按会话更新到 RAG。
+
+自动运维后台任务应只运行一个应用进程，避免使用多个 Uvicorn workers 导致重复巡查和重复重启。
