@@ -67,19 +67,26 @@ class DashScopeEmbeddings(Embeddings):
         try:
             logger.info(f"批量嵌入 {len(texts)} 个文档")
             
-            # 批量调用 API
-            response = self.client.embeddings.create(
-                model=self.model,
-                input=texts,
-                dimensions=self.dimensions,
-                encoding_format="float"
-            )
-            
-            embeddings = [item.embedding for item in response.data]
-            logger.debug(f"批量嵌入完成, 维度: {len(embeddings[0])}")
-            
+            embeddings = []
+
+            for start in range(0, len(texts), config.max_batch_size):
+                batch = texts[start:start + config.max_batch_size]
+
+                response = self.client.embeddings.create(
+                    model=self.model,
+                    input=batch,
+                    dimensions=self.dimensions,
+                    encoding_format="float",
+                )
+
+                batch_embeddings = sorted(
+                    response.data,
+                    key=lambda item: item.index,
+                )
+                embeddings.extend(item.embedding for item in batch_embeddings)
+
+            logger.debug(f"批量嵌入完成, 数量: {len(embeddings)}")
             return embeddings
-            
         except Exception as e:
             logger.error(f"批量嵌入失败: {e}")
             raise RuntimeError(f"批量嵌入失败: {e}") from e
