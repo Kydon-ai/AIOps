@@ -7,6 +7,7 @@ from app.tools.process_details import get_process_details
 from app.tools.read_service_logs import read_service_logs
 from app.tools.read_skill import read_skill
 from app.tools.restart_http_service import restart_http_service
+from app.tools.save_warning_log import save_warning_log
 from app.tools.top_cpu_processes import get_top_cpu_processes
 from app.tools.time_tool import get_current_time
 
@@ -20,6 +21,7 @@ DEFAULT_LOCAL_AGENT_TOOLS = (
     read_skill,
     read_service_logs,
     restart_http_service,
+    save_warning_log,
     get_top_cpu_processes,
 )
 
@@ -33,5 +35,6 @@ __all__ = [
     "read_skill",
     "read_service_logs",
     "restart_http_service",
+    "save_warning_log",
     "get_top_cpu_processes",
 ]
