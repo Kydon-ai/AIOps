@@ -3,6 +3,7 @@
 from app.tools.knowledge_tool import retrieve_knowledge
 from app.tools.query_metrics_alerts import query_prometheus_alerts
 from app.tools.query_prometheus_metrics import query_prometheus_metrics
+from app.tools.process_details import get_process_details
 from app.tools.read_service_logs import read_service_logs
 from app.tools.read_skill import read_skill
 from app.tools.restart_http_service import restart_http_service
@@ -15,6 +16,7 @@ DEFAULT_LOCAL_AGENT_TOOLS = (
     get_current_time,
     query_prometheus_alerts,
     query_prometheus_metrics,
+    get_process_details,
     read_skill,
     read_service_logs,
     restart_http_service,
@@ -27,6 +29,7 @@ __all__ = [
     "get_current_time",
     "query_prometheus_alerts",
     "query_prometheus_metrics",
+    "get_process_details",
     "read_skill",
     "read_service_logs",
     "restart_http_service",
