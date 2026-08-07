@@ -1,5 +1,7 @@
 """Milvus 客户端工厂模块"""
 
+from pathlib import Path
+
 from loguru import logger
 from pymilvus import (
     Collection,
@@ -76,16 +78,24 @@ class MilvusClientManager:
 
             logger.info(f"正在连接到 Milvus: {config.milvus_host}:{config.milvus_port}")
 
-            # 建立连接
-            connections.connect(
-                alias="default",
-                host=config.milvus_host,
-                port=str(config.milvus_port),
-                timeout=config.milvus_timeout / 1000,  # 转换为秒
-            )
-
-            # 创建客户端
-            uri = f"http://{config.milvus_host}:{config.milvus_port}"
+            # MilvusClient、Collection 和 LangChain Milvus 共用同一个连接。
+            # 否则 ORM API 会报：should create connection first。
+            if config.milvus_use_lite:
+                uri = str(Path(config.milvus_lite_uri).expanduser().resolve())
+                Path(uri).parent.mkdir(parents=True, exist_ok=True)
+                connections.connect(
+                    alias="default",
+                    uri=uri,
+                    timeout=config.milvus_timeout / 1000,
+                )
+            else:
+                uri = f"http://{config.milvus_host}:{config.milvus_port}"
+                connections.connect(
+                    alias="default",
+                    uri=uri,
+                    timeout=config.milvus_timeout / 1000,
+                )
+            logger.info(f"使用uri:{uri}")
             self._client = MilvusClient(uri=uri)
 
             logger.info("成功连接到 Milvus")
@@ -142,9 +152,12 @@ class MilvusClientManager:
 
     def _collection_exists(self) -> bool:
         """检查 collection 是否存在"""
-        # pymilvus 的类型标注可能不准确，实际返回 bool
-        result = utility.has_collection(self.COLLECTION_NAME)
-        return bool(result)  # type: ignore[arg-type]
+        if self._client is None:
+            raise RuntimeError("Milvus 客户端未初始化")
+
+        # 使用 MilvusClient API，兼容 Milvus Lite 和远程 Milvus，
+        # 避免调用已废弃的 utility.has_collection ORM API。
+        return bool(self._client.has_collection(self.COLLECTION_NAME))
 
     def _create_collection(self) -> None:
         """创建 biz collection"""
@@ -179,12 +192,15 @@ class MilvusClientManager:
             enable_dynamic_field=False,
         )
 
-        # 创建 collection
-        self._collection = Collection(
-            name=self.COLLECTION_NAME,
-            schema=schema,
-            num_shards=self.DEFAULT_SHARD_NUMBER,
-        )
+        # Milvus Lite 不支持 num_shards；Standalone/Distributed 才使用该参数。
+        collection_kwargs = {
+            "name": self.COLLECTION_NAME,
+            "schema": schema,
+        }
+        if not config.milvus_use_lite:
+            collection_kwargs["num_shards"] = self.DEFAULT_SHARD_NUMBER
+
+        self._collection = Collection(**collection_kwargs)
 
         # 创建索引
         self._create_index()
@@ -194,11 +210,19 @@ class MilvusClientManager:
         if self._collection is None:
             raise RuntimeError("Collection 未初始化")
 
-        index_params = {
-            "metric_type": "L2",  # 欧氏距离
-            "index_type": "IVF_FLAT",
-            "params": {"nlist": 128},
-        }
+        if config.milvus_use_lite:
+            # Milvus Lite 当前只支持 FLAT 索引。
+            index_params = {
+                "metric_type": "L2",
+                "index_type": "FLAT",
+                "params": {},
+            }
+        else:
+            index_params = {
+                "metric_type": "L2",
+                "index_type": "IVF_FLAT",
+                "params": {"nlist": 128},
+            }
 
         _ = self._collection.create_index(
             field_name="vector",
@@ -211,6 +235,12 @@ class MilvusClientManager:
         """加载 collection 到内存"""
         if self._collection is None:
             self._collection = Collection(self.COLLECTION_NAME)
+
+        # Milvus Lite 不支持 utility.load_state，直接调用 load 即可。
+        if config.milvus_use_lite:
+            self._collection.load()
+            logger.info(f"Collection '{self.COLLECTION_NAME}' 已加载")
+            return
 
         # 检查 collection 是否已加载（兼容多版本）
         try:

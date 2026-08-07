@@ -17,5 +17,6 @@ dependencies = [
     "mcp<2.0.0",
     "openai>=2.53.0",
     "pydantic-settings>=2.14.2",
+    "pymilvus[milvus-lite]>=3.0.1",
     "sse-starlette>=3.4.6",
 ]

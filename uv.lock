@@ -1448,6 +1448,11 @@ wheels = [
     { url = "https://pypi.tuna.tsinghua.edu.cn/packages/60/9d/7011887b29f452905745e8bd321f404068d5bfe78fe84e42c0b7cd81a065/pymilvus-3.0.1-py3-none-any.whl", hash = "sha256:c5a8d5c1fa1de7b416e3529d383d8cc2e7da2170433ffa4a2d9087e14f70171a", size = 386820, upload-time = "2026-07-29T14:55:44.279Z" },
 ]
 
+[package.optional-dependencies]
+milvus-lite = [
+    { name = "milvus-lite", marker = "sys_platform != 'win32'" },
+]
+
 [[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
@@ -1572,6 +1577,7 @@ dependencies = [
     { name = "mcp" },
     { name = "openai" },
     { name = "pydantic-settings" },
+    { name = "pymilvus", extra = ["milvus-lite"] },
     { name = "sse-starlette" },
 ]
 
@@ -1589,6 +1595,7 @@ requires-dist = [
     { name = "mcp", specifier = "<2.0.0" },
     { name = "openai", specifier = ">=2.53.0" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
+    { name = "pymilvus", extras = ["milvus-lite"], specifier = ">=3.0.1" },
     { name = "sse-starlette", specifier = ">=3.4.6" },
 ]
 

@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     milvus_host: str = "localhost"
     milvus_port: int = 19530
     milvus_timeout: int = 10000  # 毫秒
+    milvus_use_lite:bool = True # 是否采用轻量级lite运行
+    milvus_lite_uri:str = './data/milvus.db' # 轻量级数据库读取路径
 
     # RAG 配置
     rag_top_k: int = 3

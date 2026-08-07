@@ -29,10 +29,15 @@ class VectorStoreManager:
             # （模块导入时就会执行此处，早于 FastAPI lifespan 中的 milvus_manager.connect）
             _ = milvus_manager.connect()
 
-            connection_args = {
-                "host": config.milvus_host,
-                "port": config.milvus_port,
-            }
+            if config.milvus_use_lite:
+                connection_args = {
+                    "uri": config.milvus_lite_uri,
+                }
+            else:
+                connection_args = {
+                    "host": config.milvus_host,
+                    "port": config.milvus_port,
+                }
 
             # 创建 LangChain Milvus VectorStore
             # 使用 biz collection，字段映射：text_field -> content, vector_field -> vector

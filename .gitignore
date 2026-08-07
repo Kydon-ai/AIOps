@@ -13,3 +13,5 @@ wheels/
 uploads/
 
 app/envs/
+
+data/
