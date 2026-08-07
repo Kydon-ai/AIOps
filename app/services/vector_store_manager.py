@@ -1,4 +1,6 @@
 """向量存储管理器 - 封装 Milvus VectorStore 操作"""
+from typing import Any
+
 from langchain_core.documents import Document
 from langchain_milvus import Milvus
 from loguru import logger
@@ -110,7 +112,10 @@ class VectorStoreManager:
             
             # metadata 是 JSON 字段，使用 JSON 路径查询语法
             # _source 是文档的来源文件路径
-            expr = f'metadata["_source"] == "{file_path}"'
+            import json
+
+            source_literal = json.dumps(file_path, ensure_ascii=False)
+            expr = f'metadata["_source"] == {source_literal}'
             
             result = collection.delete(expr)
             deleted_count = result.delete_count if hasattr(result, "delete_count") else 0
@@ -121,6 +126,49 @@ class VectorStoreManager:
         except Exception as e:
             logger.warning(f"删除旧数据失败 (可能是首次索引): {e}")
             return 0
+
+    def list_documents(self, limit: int = 16_384) -> dict[str, Any]:
+        """列出向量库中按来源文件聚合后的文档。"""
+        collection = milvus_manager.get_collection()
+        safe_limit = max(1, min(limit, 16_384))
+        rows = collection.query(
+            expr="",
+            output_fields=["id", "metadata"],
+            limit=safe_limit,
+        )
+
+        grouped: dict[str, dict[str, Any]] = {}
+        for row in rows or []:
+            metadata = row.get("metadata") or {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+            source = str(metadata.get("_source") or "unknown")
+            item = grouped.setdefault(
+                source,
+                {
+                    "source": source,
+                    "file_name": str(metadata.get("_file_name") or source.rsplit("/", 1)[-1]),
+                    "chunk_count": 0,
+                },
+            )
+            item["chunk_count"] += 1
+
+        documents = sorted(grouped.values(), key=lambda item: item["source"])
+        return {
+            "documents": documents,
+            "document_count": len(documents),
+            "chunk_count": len(rows or []),
+            "truncated": len(rows or []) >= safe_limit,
+        }
+
+    def delete_all(self) -> int:
+        """删除 collection 中的全部向量，但保留 collection 和原始文件。"""
+        collection = milvus_manager.get_collection()
+        before = int(getattr(collection, "num_entities", 0) or 0)
+        result = collection.delete('id != ""')
+        collection.flush()
+        deleted_count = getattr(result, "delete_count", None)
+        return int(deleted_count if deleted_count is not None else before)
 
     def get_vector_store(self) -> Milvus | None:
         """

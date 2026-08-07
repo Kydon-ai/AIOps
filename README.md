@@ -175,3 +175,15 @@ MANAGED_HTTP_SERVICES='{"rag":"rag.service"}'
 自动巡查和告警诊断报告只写入 `data/operation_records/`，方便人工审核，不会自动进入向量库。用户对话完成后会由 LLM 判断是否包含可复用经验；只有筛选通过的内容才会追加到 `data/通用经验.md`，并且只对这个文件建立向量索引。
 
 自动运维后台任务应只运行一个应用进程，避免使用多个 Uvicorn workers 导致重复巡查和重复重启。
+
+## 向量文档管理接口
+
+以下接口只操作 Milvus 中的向量，不会删除磁盘上的原始文件：
+
+```text
+GET    /api/documents
+DELETE /api/documents?source=<完整 source 路径或唯一文件名>
+DELETE /api/documents/all?confirm=true
+```
+
+`GET /api/documents` 会按来源文件聚合返回分片数量。清空全部向量必须显式传入 `confirm=true`；上传文件或 `data/通用经验.md` 需要重新索引后才能恢复向量。
