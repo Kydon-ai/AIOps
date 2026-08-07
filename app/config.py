@@ -70,7 +70,8 @@ class Settings(BaseSettings):
     automation_enabled: bool = True
     automation_alert_poll_interval: int = 60
     automation_patrol_interval: int = 3600
-    auto_index_conversations: bool = True
+    experience_extraction_enabled: bool = True
+    experience_file: str = "./data/通用经验.md"
     operation_records_dir: str = "./data/operation_records"
 
     @property

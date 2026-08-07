@@ -116,17 +116,16 @@ class RagAgentService:
         question: str,
         answer: str,
     ) -> None:
-        """后台将已完成的用户对话沉淀到知识库，失败不影响回答。"""
+        """让 LLM 筛选可复用经验，只把通用经验写入唯一知识文件。"""
         if (
-            not config.auto_index_conversations
+            not config.experience_extraction_enabled
             or session_id.startswith("automation-")
             or not answer.strip()
         ):
             return
         try:
             await asyncio.to_thread(
-                operation_memory_service.save_conversation,
-                session_id,
+                operation_memory_service.review_and_save_experience,
                 question,
                 answer,
             )

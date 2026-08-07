@@ -161,7 +161,8 @@ PROMETHEUS_BASE_URL=http://127.0.0.1:9090
 AUTOMATION_ENABLED=true
 AUTOMATION_ALERT_POLL_INTERVAL=60
 AUTOMATION_PATROL_INTERVAL=3600
-AUTO_INDEX_CONVERSATIONS=true
+EXPERIENCE_EXTRACTION_ENABLED=true
+EXPERIENCE_FILE=./data/通用经验.md
 SKILLS_DIR=./skills
 
 # 默认关闭，确认权限和 Skill 完整后再打开
@@ -171,6 +172,6 @@ MANAGED_HTTP_SERVICES='{"rag":"rag.service"}'
 
 `restart_http_service` 使用 `systemctl`，应用进程需要拥有对应服务的重启权限。没有 Skill、证据不足或服务不在白名单时，Agent 不应执行重启。
 
-自动巡查和告警诊断报告会写入 `data/operation_records/` 并自动索引到 Milvus；用户对话在完成后也会按会话更新到 RAG。
+自动巡查和告警诊断报告只写入 `data/operation_records/`，方便人工审核，不会自动进入向量库。用户对话完成后会由 LLM 判断是否包含可复用经验；只有筛选通过的内容才会追加到 `data/通用经验.md`，并且只对这个文件建立向量索引。
 
 自动运维后台任务应只运行一个应用进程，避免使用多个 Uvicorn workers 导致重复巡查和重复重启。
