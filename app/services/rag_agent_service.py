@@ -4,6 +4,7 @@
 支持真正的流式输出和更好的模型适配。
 """
 
+import asyncio
 from typing import Annotated, Any, AsyncGenerator, Dict, Sequence
 
 from langchain.agents import create_agent
@@ -21,12 +22,8 @@ from langchain_qwq import ChatQwen
 
 from app.config import config
 from app.tools import DEFAULT_LOCAL_AGENT_TOOLS
-from app.agent.mcp_client import (
-    get_mcp_client_with_retry,
-    load_mcp_tools_safe,
-    format_exception_chain,
-    suggest_mcp_transport,
-)
+from app.services.operation_memory_service import operation_memory_service
+from app.agent.mcp_client import format_exception_chain
 
 # 阿里千问大模型和langchain集成参考： https://docs.langchain.com/oss/python/integrations/chat/qwen
 # 注意：需要配置环境变量 DASHSCOPE_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1 否则默认访问的是新加坡站点
@@ -104,8 +101,6 @@ class RagAgentService:
         self.tools = list(DEFAULT_LOCAL_AGENT_TOOLS)
 
         # MCP 客户端（延迟初始化，使用全局管理）
-        self.mcp_tools: list = []
-
         # 创建内存检查点（用于会话管理）
         self.checkpointer = MemorySaver()
 
@@ -115,31 +110,35 @@ class RagAgentService:
 
         logger.info(f"RAG Agent 服务初始化完成 (ChatQwen), model={self.model_name}, streaming={streaming}")
 
+    async def _persist_conversation(
+        self,
+        session_id: str,
+        question: str,
+        answer: str,
+    ) -> None:
+        """后台将已完成的用户对话沉淀到知识库，失败不影响回答。"""
+        if (
+            not config.auto_index_conversations
+            or session_id.startswith("automation-")
+            or not answer.strip()
+        ):
+            return
+        try:
+            await asyncio.to_thread(
+                operation_memory_service.save_conversation,
+                session_id,
+                question,
+                answer,
+            )
+        except Exception as exc:
+            logger.error("用户对话沉淀失败: {}", exc)
+
     async def _initialize_agent(self):
-        """异步初始化 Agent（包括 MCP 工具）"""
+        """异步初始化只使用本地工具的 Agent。"""
         if self._agent_initialized:
             return
 
-        for name, server in config.mcp_servers.items():
-            hint = suggest_mcp_transport(
-                str(server.get("url", "")),
-                str(server.get("transport", "")),
-            )
-            if hint:
-                logger.warning(f"MCP 配置 [{name}]: {hint}")
-
-        mcp_client = await get_mcp_client_with_retry()
-        mcp_tools, mcp_err = await load_mcp_tools_safe(mcp_client)
-        if mcp_err:
-            logger.warning(
-                f"MCP 工具加载失败，将仅使用本地工具继续运行:\n{mcp_err}"
-            )
-            self.mcp_tools = []
-        else:
-            self.mcp_tools = mcp_tools
-            logger.info(f"成功加载 {len(mcp_tools)} 个 MCP 工具")
-
-        all_tools = self.tools + self.mcp_tools
+        all_tools = self.tools
 
         self.agent = create_agent(
             self.model,
@@ -174,6 +173,8 @@ class RagAgentService:
             2. 当需要获取实时信息或专业知识时，主动使用相关工具
             3. 基于工具返回的结果提供准确、专业的回答
             4. 如果工具无法提供足够信息，请诚实地告知用户
+            5. 涉及服务器修改时，先读取对应 Skill；只能操作工具白名单中的服务
+            6. 未经证据支持不要重启服务，重启后必须再次验证状态
 
             回答要求:
             - 保持友好、专业的语气
@@ -230,14 +231,16 @@ class RagAgentService:
             if messages_result:
                 last_message = messages_result[-1]
                 answer = last_message.content if hasattr(last_message, 'content') else str(last_message)
+                answer_text = answer if isinstance(answer, str) else str(answer)
 
                 # 记录工具调用
                 if hasattr(last_message, "tool_calls") and last_message.tool_calls:
                     tool_names = [tc.get("name", "unknown") for tc in last_message.tool_calls]
                     logger.info(f"[会话 {session_id}] Agent 调用了工具: {tool_names}")
 
+                await self._persist_conversation(session_id, question, answer_text)
                 logger.info(f"[会话 {session_id}] RAG Agent 查询完成（非流式）")
-                return answer
+                return answer_text
 
             logger.warning(f"[会话 {session_id}] Agent 返回结果为空")
             return ""
@@ -287,6 +290,7 @@ class RagAgentService:
                 }
             }
 
+            answer_parts: list[str] = []
             async for token, metadata in self.agent.astream(
                 input=agent_input,
                 config=config_dict,
@@ -303,12 +307,18 @@ class RagAgentService:
                             if isinstance(block, dict) and block.get('type') == 'text':
                                 text_content = block.get('text', '')
                                 if text_content:
+                                    answer_parts.append(text_content)
                                     yield {
                                         "type": "content",
                                         "data": text_content,
                                         "node": node_name
                                     }
 
+            await self._persist_conversation(
+                session_id,
+                question,
+                "".join(answer_parts),
+            )
             logger.info(f"[会话 {session_id}] RAG Agent 查询完成（流式）")
             yield {"type": "complete"}
 
@@ -400,7 +410,6 @@ class RagAgentService:
         """清理资源"""
         try:
             logger.info("清理 RAG Agent 服务资源...")
-            # MCP 客户端由全局管理器统一管理，无需手动清理
             logger.info("RAG Agent 服务资源已清理")
         except Exception as e:
             logger.error(f"清理资源失败: {e}")

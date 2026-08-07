@@ -14,6 +14,7 @@ from app.config import config
 from loguru import logger
 from app.api import chat, health, file, aiops
 from app.core.milvus_client import milvus_manager
+from app.services.automation_service import automation_service
 from dotenv import load_dotenv
 
 _ = load_dotenv()
@@ -24,6 +25,7 @@ async def lifespan(app: FastAPI):
     # 启动时执行
     logger.info("=" * 60)
     logger.info(f"🚀 {config.app_name} v{config.app_version} 启动中...")
+    logger.info("Prometheus 地址: {}", config.prometheus_base_url.rstrip("/"))
     logger.info(f"📝 环境: {'开发' if config.debug else '生产'}")
     logger.info(f"🌐 监听地址: http://{config.host}:{config.port}")
     logger.info(f"📚 API 文档: http://{config.host}:{config.port}/docs")
@@ -32,15 +34,19 @@ async def lifespan(app: FastAPI):
     logger.info("🔌 正在连接 Milvus...")
     milvus_manager.connect()
     logger.info("✅ Milvus 连接成功")
+    await automation_service.start()
     
     logger.info("=" * 60)
     
-    yield
-    
-    # 关闭时执行
-    logger.info("🔌 正在关闭 Milvus 连接...")
-    milvus_manager.close()
-    logger.info(f"👋 {config.app_name} 关闭")
+    try:
+        yield
+    finally:
+        await automation_service.stop()
+
+        # 关闭时执行
+        logger.info("🔌 正在关闭 Milvus 连接...")
+        milvus_manager.close()
+        logger.info(f"👋 {config.app_name} 关闭")
 
 
 # 创建 FastAPI 应用
