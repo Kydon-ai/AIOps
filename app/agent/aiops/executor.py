@@ -11,7 +11,6 @@ from loguru import logger
 
 from app.config import config
 from app.tools import DEFAULT_LOCAL_AGENT_TOOLS
-from app.agent.mcp_client import get_mcp_client_with_retry
 from .state import PlanExecuteState
 
 
@@ -38,13 +37,9 @@ async def executor(state: PlanExecuteState) -> Dict[str, Any]:
         # 获取本地工具
         local_tools = list(DEFAULT_LOCAL_AGENT_TOOLS)
 
-        # 获取 MCP 工具
-        mcp_client = await get_mcp_client_with_retry()
-        mcp_tools = await mcp_client.get_tools()
-        logger.info(f"可用工具数量: 本地 {len(local_tools)} + MCP {len(mcp_tools)}")
-
-        # 合并所有工具
-        all_tools = local_tools + mcp_tools
+        # 当前 AIOps 使用本地 Prometheus、Skill、日志和受控服务工具。
+        all_tools = local_tools
+        logger.info(f"可用工具数量: 本地 {len(local_tools)}")
 
         # 创建 LLM（绑定工具）
         llm = ChatQwen(
