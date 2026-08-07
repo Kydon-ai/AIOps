@@ -55,8 +55,23 @@ class Settings(BaseSettings):
     mcp_monitor_url: str = "http://localhost:8004/mcp"
 
     # Prometheus
-    prometheus_base_url: str = "http://127.0.0.1:9090"
+    prometheus_base_url: str = ""
     prometheus_request_timeout: float = 10.0
+
+    # 自动运维与 Skill
+    skills_dir: str = "./skills"
+    skill_max_bytes: int = 120_000
+    
+    # JSON 环境变量示例：{"rag":"rag.service","api":"my-api.service"}
+    managed_http_services: dict[str, str] = {}
+    service_restart_enabled: bool = False
+    service_restart_timeout: int = 30
+    service_log_timeout: int = 15
+    automation_enabled: bool = True
+    automation_alert_poll_interval: int = 60
+    automation_patrol_interval: int = 3600
+    auto_index_conversations: bool = True
+    operation_records_dir: str = "./data/operation_records"
 
     @property
     def mcp_servers(self) -> dict[str, dict[str, Any]]:
