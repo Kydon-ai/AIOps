@@ -62,6 +62,9 @@ npx -y cls-mcp-server@latest
 Invoke-WebRequest https://github.com/milvus-io/milvus/releases/download/v3.0.0/milvus-standalone-docker-compose.yml -OutFile docker-compose.yml
 
 docker compose up -d
+
+> 如果使用milvus-lite，请在linux上运行，这样可以不用安装docker版本
+
 ```
 > 我这是windows的，其他的举一反三
 
