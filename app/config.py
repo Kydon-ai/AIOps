@@ -73,6 +73,7 @@ class Settings(BaseSettings):
     experience_extraction_enabled: bool = True
     experience_file: str = "./data/通用经验.md"
     operation_records_dir: str = "./data/operation_records"
+    warning_logs_dir: str = "./data/warnning_log"
 
     @property
     def mcp_servers(self) -> dict[str, dict[str, Any]]:

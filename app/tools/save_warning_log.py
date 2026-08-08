@@ -8,8 +8,8 @@ from pathlib import Path
 from langchain_core.tools import tool
 from loguru import logger
 
+from app.config import config
 
-WARNING_LOG_DIR = Path("./warnning_log")
 MAX_WARNING_BYTES = 2 * 1024 * 1024
 
 
@@ -23,7 +23,7 @@ def _safe_warning_type(value: str) -> str:
 
 @tool
 def save_warning_log(text_content: str, warning_type: str) -> str:
-    """将警告文本落盘到 ./warnning_log/YYYY-mm-DD_HH-MM-SS_<警告类型>.md。"""
+    """将警告文本落盘到 ./data/warnning_log/YYYY-mm-DD_HH-MM-SS_<警告类型>.md。"""
     if not isinstance(text_content, str) or not text_content.strip():
         return json.dumps(
             {"success": False, "error": "text_content 不能为空"},
@@ -47,16 +47,17 @@ def save_warning_log(text_content: str, warning_type: str) -> str:
         )
 
     try:
-        WARNING_LOG_DIR.mkdir(parents=True, exist_ok=True)
+        warning_log_dir = Path(config.warning_logs_dir).expanduser().resolve()
+        warning_log_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         warning_name = _safe_warning_type(warning_type)
         base_name = f"{timestamp}_{warning_name}"
-        path = WARNING_LOG_DIR / f"{base_name}.md"
+        path = warning_log_dir / f"{base_name}.md"
 
         # 同一秒内出现同类告警时避免覆盖已有记录。
         suffix = 1
         while path.exists():
-            path = WARNING_LOG_DIR / f"{base_name}_{suffix}.md"
+            path = warning_log_dir / f"{base_name}_{suffix}.md"
             suffix += 1
 
         path.write_text(content + "\n", encoding="utf-8")
