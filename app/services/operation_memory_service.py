@@ -83,9 +83,11 @@ class OperationMemoryService:
 你是一个知识库编辑器。请判断下面这轮用户对话是否包含可复用的工程经验。
 
 只有满足以下条件才保留：
-- 能帮助未来解决类似问题，而不是一次性的闲聊或简单事实；
+- 由用户在<question></question>当中主动指出的能帮助未来解决类似问题，而不是一次性的闲聊或简单事实；
 - 包含明确的原因、解决方法、配置规则、排错步骤或可验证的注意事项；
 - 不包含 API Key、密码、Token、真实域名、个人隐私或无法复用的临时细节。
+- 不包括BlogBackendFailed、cpu-warnning、memory-pressure-diagnosis、root-disk-low-warning这些基础操作的处理流程，因为这些已经在skill当中保存过了。
+- 尽量不保存回答中给出的步骤，用户提问中指出的问题才是重点。
 
 如果值得沉淀，请把它改写成独立、准确、可执行的经验；不要复述整段对话。
 如果不值得沉淀，返回 has_experience=false，experience 为空。
