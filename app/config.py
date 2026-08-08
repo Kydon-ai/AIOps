@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     
     # JSON 环境变量示例：{"rag":"rag.service","api":"my-api.service"}
     managed_http_services: dict[str, str] = {}
-    service_restart_enabled: bool = False
+    service_restart_enabled: bool = True
     service_restart_timeout: int = 30
     service_log_timeout: int = 15
     automation_enabled: bool = True
