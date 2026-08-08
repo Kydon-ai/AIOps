@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     app_name: str = "SuperBizAgent"
     app_version: str = "1.0.0"
     debug: bool = False
-    host: str = "127.0.0.1"
+    host: str = "0.0.0.0"
     port: int = 9900
 
     # DashScope 配置
