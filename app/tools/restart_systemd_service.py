@@ -1,4 +1,4 @@
-"""受控 HTTP 服务重启工具。"""
+"""受控 systemd 服务重启工具。"""
 
 import json
 import subprocess
@@ -15,12 +15,11 @@ def _service_unit(service_name: str) -> str | None:
 
 
 @tool
-def restart_http_service(service_name: str) -> str:
-    """重启一个配置白名单中的 HTTP systemd 服务并检查状态。
+def restart_systemd_service(service_name: str) -> str:
+    """重启配置白名单中的 systemd 服务并检查状态。
 
-    该工具不会执行任意 shell 命令。服务必须先配置在
-    MANAGED_HTTP_SERVICES 中，并且 SERVICE_RESTART_ENABLED=true。
-    自动修复前必须先读取对应 Skill 并完成证据检查。
+    服务必须先配置在 MANAGED_HTTP_SERVICES 白名单中，并且
+    SERVICE_RESTART_ENABLED=true。该工具不执行任意 Shell 命令。
     """
     if not config.service_restart_enabled:
         return json.dumps(
@@ -66,7 +65,7 @@ def restart_http_service(service_name: str) -> str:
             check=False,
         )
         active = status.stdout.strip()
-        logger.warning("自动重启服务: {} ({})，状态: {}", service_name, unit, active)
+        logger.warning("自动重启 systemd 服务: {} ({})，状态: {}", service_name, unit, active)
         return json.dumps(
             {
                 "success": status.returncode == 0,
@@ -87,9 +86,8 @@ def restart_http_service(service_name: str) -> str:
             ensure_ascii=False,
         )
     except Exception as exc:
-        logger.exception("重启服务失败")
+        logger.exception("重启 systemd 服务失败")
         return json.dumps(
             {"success": False, "error": str(exc)},
             ensure_ascii=False,
         )
-

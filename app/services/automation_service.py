@@ -116,7 +116,7 @@ class AutomationService:
             1. 先调用 read_skill，尝试读取与告警名称对应的 Skill：{alert_name}。
             2. 根据 Skill 和告警证据调用 read_service_logs 检查日志；允许的服务名为：{services}。
             3. 判断根因，不要只复述告警。
-            4. 只有当 Skill 明确要求、服务在白名单中且 service_restart_enabled 已开启时，才可调用 restart_http_service。
+            4. 只有当 Skill 明确要求、服务在白名单中且 service_restart_enabled 已开启时，才可调用 restart_systemd_service。
             5. 重启后必须重新检查告警或健康状态，并说明重启前后的结果。
             6. 如果没有对应 Skill、没有足够证据或修复风险不明确，只诊断和给出建议，不要猜测或执行重启。
             7. 最后输出：告警摘要、证据、根因判断、已执行动作、验证结果、后续建议。
