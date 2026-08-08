@@ -152,7 +152,18 @@ uv run main.py
 - `query_prometheus_metrics`：执行只读 PromQL；
 - `read_skill`：读取 `skills/<name>/SKILL.md`；
 - `read_service_logs`：读取白名单 systemd 服务日志；
-- `restart_http_service`：仅重启配置白名单中的服务。
+- `check_systemd_service`：只读检查 systemd 服务是否存在及当前状态；
+- `restart_systemd_service`：仅重启配置白名单中的 systemd 服务。
+
+BlogBackendFailed 还提供独立的 systemd MCP 服务，默认地址为
+`http://127.0.0.1:8006/mcp`，启动命令为：
+
+```bash
+uv run python -m app.mcp_servers.systemd_service
+```
+
+该 MCP 提供 `check_systemd_service` 和 `restart_systemd_service`，重启同样受
+`MANAGED_HTTP_SERVICES` 与 `SERVICE_RESTART_ENABLED` 保护。
 
 服务器上建议配置：
 
@@ -167,10 +178,10 @@ SKILLS_DIR=./skills
 
 # 默认关闭，确认权限和 Skill 完整后再打开
 SERVICE_RESTART_ENABLED=false
-MANAGED_HTTP_SERVICES='{"rag":"rag.service"}'
+MANAGED_HTTP_SERVICES='{"rag":"rag.service","8001":"endpoint.service","dblog-backend":"dblog-backend.service"}'
 ```
 
-`restart_http_service` 使用 `systemctl`，应用进程需要拥有对应服务的重启权限。没有 Skill、证据不足或服务不在白名单时，Agent 不应执行重启。
+`restart_systemd_service` 使用 `systemctl` 重启白名单中的服务，并检查 `systemctl is-active` 状态。没有 Skill、证据不足或服务不在白名单时，Agent 不应执行重启。该工具不负责 HTTP 健康检查。
 
 自动巡查和告警诊断报告只写入 `data/operation_records/`，方便人工审核，不会自动进入向量库。用户对话完成后会由 LLM 判断是否包含可复用经验；只有筛选通过的内容才会追加到 `data/通用经验.md`，并且只对这个文件建立向量索引。
 
