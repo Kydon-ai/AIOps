@@ -113,7 +113,8 @@ class AutomationService:
             {json.dumps(alert, ensure_ascii=False, indent=2)}
 
             执行要求：
-            1. 先调用 read_skill，尝试读取与告警名称对应的 Skill。
+            0. 首先调用 list_skills 找到与所需要处理的故障名字相关的skill的名称
+            1. 然后调用 read_skill，尝试读取与告警名称对应的 Skill步骤。
             2. 根据 Skill 和告警证据调用 read_service_logs 检查日志；允许的服务名为：{services}。
             3. 判断根因，不要只复述告警。
             4. 如果明确发现了 Skill 要求的故障场景、服务在白名单中且 service_restart_enabled 已开启时，才可调restart_systemd_service执行服务重启。
