@@ -1,0 +1,4 @@
+interface:
+  display_name: "Node Exporter Down Recovery"
+  short_description: "Diagnose Node Exporter and safely recover a matching Docker container"
+  default_prompt: "Use $node-exporter-down to diagnose NodeExporterDown and only restart a uniquely matched stopped node_exporter Docker container."

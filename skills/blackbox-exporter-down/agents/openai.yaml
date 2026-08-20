@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blackbox Exporter Down Recovery"
+  short_description: "Distinguish exporter failure from target probe failure and recover safely"
+  default_prompt: "Use $blackbox-exporter-down to diagnose BlackboxExporterDown and only restart a uniquely matched stopped blackbox_exporter Docker container."
