@@ -1,0 +1,13 @@
+groups:
+  - name: resource-scenario-disk
+    interval: 15s
+    rules:
+      - alert: WindowsCDiskLow
+        expr: 100 * node_filesystem_avail_bytes{job="node",mountpoint="/mnt/c",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{job="node",mountpoint="/mnt/c",fstype!~"tmpfs|overlay"} < 25
+        for: 30s
+        labels:
+          severity: warning
+          scenario: resource-disk-existing-pressure
+        annotations:
+          summary: "Windows C 盘剩余空间低于测试阈值"
+          description: "当前 /mnt/c 使用率已达到资源告警测试阈值"

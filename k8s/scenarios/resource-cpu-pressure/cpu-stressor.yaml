@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpu-stressor
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: cpu-stressor
+    app.kubernetes.io/component: resource-scenario
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cpu-stressor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cpu-stressor
+    spec:
+      containers:
+        - name: cpu-stressor
+          image: quay.io/prometheus/node-exporter:v1.9.1
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - >-
+              workers=${CPU_WORKERS:-28}; i=0;
+              while [ "$i" -lt "$workers" ]; do yes >/dev/null & i=$((i+1)); done;
+              wait
+          env:
+            - name: CPU_WORKERS
+              value: "28"
+          resources:
+            requests:
+              cpu: "1"
+            limits:
+              cpu: "32"

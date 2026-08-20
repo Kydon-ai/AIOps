@@ -1,0 +1,13 @@
+groups:
+  - name: resource-scenario-cpu
+    interval: 15s
+    rules:
+      - alert: CpuStressorActive
+        expr: sum(rate(container_cpu_usage_seconds_total{job="kubelet-cadvisor",namespace="observability",pod=~"cpu-stressor-.*",container="cpu-stressor"}[1m])) > 0.5
+        for: 30s
+        labels:
+          severity: warning
+          scenario: resource-cpu-pressure
+        annotations:
+          summary: "CPU 压力场景正在消耗 CPU"
+          description: "cpu-stressor 容器 CPU 使用率持续超过测试阈值"

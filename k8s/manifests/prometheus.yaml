@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prometheus
+    spec:
+      hostNetwork: true
+      serviceAccountName: prometheus
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
+      containers:
+        - name: prometheus
+          image: quay.io/prometheus/prometheus:v3.5.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --web.listen-address=0.0.0.0:9090
+            - --web.enable-lifecycle
+          ports:
+            - name: http
+              containerPort: 9090
+              hostPort: 9090
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: true
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus/prometheus.yml
+              subPath: prometheus.yml
+              readOnly: true
+            - name: rules
+              mountPath: /etc/prometheus/alerts.yml
+              subPath: alerts.yml
+              readOnly: true
+            - name: data
+              mountPath: /prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        - name: rules
+          configMap:
+            name: prometheus-rules
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: observability
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-kubelet-read
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes/proxy
+    verbs: ["get"]
+  - nonResourceURLs:
+      - /metrics
+      - /metrics/cadvisor
+      - /metrics/resource
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-kubelet-read
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-kubelet-read
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: observability
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: prometheus
+spec:
+  selector:
+    app.kubernetes.io/name: prometheus
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090

@@ -1,0 +1,32 @@
+groups:
+  - name: resource-scenario-memory
+    interval: 15s
+    rules:
+      - alert: MemoryStressorHigh
+        expr: |
+          (
+            max by (namespace, pod, container) (
+              container_memory_working_set_bytes{
+                job="kubelet-cadvisor",
+                namespace="observability",
+                pod=~"memory-stressor-.*",
+                container="memory-stressor"
+              }
+            )
+            /
+            max by (namespace, pod, container) (
+              container_spec_memory_limit_bytes{
+                job="kubelet-cadvisor",
+                namespace="observability",
+                pod=~"memory-stressor-.*",
+                container="memory-stressor"
+              }
+            )
+          ) > 0.60
+        for: 30s
+        labels:
+          severity: warning
+          scenario: resource-memory-pressure
+        annotations:
+          summary: "内存压力场景超过容器限制的 60%"
+          description: "memory-stressor 容器工作集持续超过内存限制的 60%"

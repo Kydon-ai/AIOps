@@ -1,0 +1,11 @@
+# A tiny static pause image is built locally by build-pause-image.sh, so pod
+# sandboxes do not depend on external registries.
+pause-image: localhost/pause:3.10
+# The monitoring workloads use hostNetwork and do not require the optional K3s
+# add-ons. Disabling them avoids pulling Docker Hub images in restricted WSL
+# networks and keeps the lab focused on exporter failures.
+disable:
+  - traefik
+  - metrics-server
+  - local-storage
+  - coredns

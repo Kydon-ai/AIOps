@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memory-stressor
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: memory-stressor
+    app.kubernetes.io/component: resource-scenario
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: memory-stressor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: memory-stressor
+    spec:
+      volumes:
+        - name: memory
+          emptyDir:
+            medium: Memory
+            sizeLimit: 120Mi
+      containers:
+        - name: memory-stressor
+          image: quay.io/prometheus/node-exporter:v1.9.1
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - "dd if=/dev/zero of=/dev/shm/memory-pressure bs=1M count=96 && sleep 3600"
+          volumeMounts:
+            - name: memory
+              mountPath: /dev/shm
+          resources:
+            requests:
+              memory: 128Mi
+            limits:
+              memory: 128Mi

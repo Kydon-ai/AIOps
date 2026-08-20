@@ -1,0 +1,13 @@
+groups:
+  - name: blackbox-target-scenario
+    interval: 5s
+    rules:
+      - alert: BlackboxTargetFailed
+        expr: probe_success{job="blackbox",instance="http://127.0.0.1:19999/health"} == 0
+        for: 5s
+        labels:
+          severity: critical
+          scenario: blackbox-target-failed
+        annotations:
+          summary: "黑盒探测目标不可达"
+          description: "blackbox-exporter 仍在运行，但目标接口探测失败"

@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-exporter
+  namespace: observability
+spec:
+  replicas: 0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox-exporter
+  namespace: observability
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: observability
+spec:
+  replicas: 1

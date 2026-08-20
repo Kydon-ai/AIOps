@@ -1,0 +1,16 @@
+[Unit]
+Description=Real dblog-backend integration-test service
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 REPLACE_REPO/k8s/real-env/dblog_backend.py
+Environment=DBLOG_MODE_FILE=REPLACE_REPO/data/eval_runtime/dblog-backend.mode
+Environment=DBLOG_HOST=0.0.0.0
+Environment=DBLOG_PORT=8001
+Restart=no
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

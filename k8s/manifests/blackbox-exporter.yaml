@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox-exporter
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: blackbox-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: blackbox-exporter
+    spec:
+      hostNetwork: true
+      containers:
+        - name: blackbox-exporter
+          image: quay.io/prometheus/blackbox-exporter:v0.27.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config.file=/config/blackbox.yml
+            - --web.listen-address=0.0.0.0:9115
+          ports:
+            - name: http
+              containerPort: 9115
+              hostPort: 9115
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: blackbox-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blackbox-exporter
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: blackbox-exporter
+  ports:
+    - name: http
+      port: 9115
+      targetPort: 9115
