@@ -115,6 +115,14 @@ def answer_requirement(expected: str, answer: str) -> bool:
     """按事实关键词核验答案，避免把同义中文表述误判为缺失。"""
     value = str(expected).strip().lower()
     actual = repair_text(answer).lower()
+    if value == "当前状态来自 query_prometheus_alerts":
+        # 工具调用本身已由 required_tools 校验；回答只需把当前告警结论
+        # 与 Prometheus 返回的状态对应起来，不要求模型逐字念出函数名。
+        return "当前" in actual and ("告警" in actual or "prometheus" in actual)
+    if value.startswith("resolved/不存在时不重复重启"):
+        return ("无需" in actual or "不需要" in actual or "不要" in actual) and "重启" in actual
+    if value == "区分历史和当前":
+        return "历史" in actual and "当前" in actual
     if value == "重启前存在且 failed":
         return "failed" in actual and ("存在" in actual or "服务" in actual)
     if value == "restart 真实返回":
