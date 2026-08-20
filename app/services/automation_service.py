@@ -9,6 +9,7 @@ from loguru import logger
 
 from app.config import config
 from app.services.operation_memory_service import operation_memory_service
+from app.services.notification_service import notification_service
 from app.services.rag_agent_service import rag_agent_service
 from app.tools.query_metrics_alerts import query_prometheus_alerts_api
 
@@ -129,10 +130,17 @@ class AutomationService:
                 prompt,
                 session_id=f"automation-alert-{fingerprint}",
             )
-            operation_memory_service.save_operation_report(
+            report_path = operation_memory_service.save_operation_report(
                 "alert_diagnosis",
                 f"告警诊断_{alert_name}",
                 answer,
+            )
+            await notification_service.send_report(
+                title=f"告警诊断_{alert_name}",
+                report=answer,
+                kind="alert_diagnosis",
+                report_path=str(report_path),
+                alert=alert,
             )
         logger.info("告警自动诊断完成: {}", alert_name)
         return answer
@@ -140,6 +148,12 @@ class AutomationService:
     async def run_patrol_once(self) -> str:
         """执行一次定时巡查，默认只读不修改服务器。"""
         services = ", ".join(sorted(config.managed_http_services)) or "未配置"
+        alert_result, alert_error = await asyncio.to_thread(query_prometheus_alerts_api)
+        active_alerts = [
+            alert
+            for alert in (alert_result.get("data") or {}).get("alerts", [])
+            if alert.get("state") in {"pending", "firing"}
+        ]
         prompt = dedent(
             f"""
             这是一次定时服务器巡查任务，不要重启服务或修改服务器。
@@ -158,11 +172,20 @@ class AutomationService:
                 prompt,
                 session_id="automation-hourly-patrol",
             )
-            operation_memory_service.save_operation_report(
+            report_path = operation_memory_service.save_operation_report(
                 "hourly_patrol",
                 "定时服务器巡查",
                 answer,
             )
+            # 定时巡查只有在发现活动告警或监控查询失败时才推送，避免健康巡查刷屏。
+            if active_alerts or alert_error:
+                await notification_service.send_report(
+                    title="定时巡查发现异常",
+                    report=answer,
+                    kind="hourly_patrol",
+                    report_path=str(report_path),
+                    alert=active_alerts[0] if active_alerts else None,
+                )
         logger.info("定时服务器巡查完成")
         return answer
 

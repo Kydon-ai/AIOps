@@ -77,6 +77,11 @@ class Settings(BaseSettings):
     operation_records_dir: str = "./data/operation_records"
     warning_logs_dir: str = "./data/warnning_log"
 
+    # 运维报告通知；Webhook 地址只在后端读取，不暴露给浏览器。
+    webhook_url: str = ""
+    webhook_timeout: float = 10.0
+    notification_enabled: bool = True
+
     @property
     def mcp_servers(self) -> dict[str, dict[str, Any]]:
         """获取完整的 MCP 服务器配置"""
