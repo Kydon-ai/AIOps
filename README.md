@@ -157,6 +157,7 @@ uv run main.py
 - `read_service_logs`：读取白名单 systemd 服务日志；
 - `check_systemd_service`：只读检查 systemd 服务是否存在及当前状态；
 - `restart_systemd_service`：仅重启配置白名单中的 systemd 服务。
+- `get_docker_containers` / `restart_docker_container`：仅检查和重启受控的 Node Exporter、Blackbox Exporter Docker 容器。
 
 BlogBackendFailed 还提供独立的 systemd MCP 服务，默认地址为
 `http://127.0.0.1:8006/mcp`，启动命令为：
