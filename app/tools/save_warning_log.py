@@ -23,7 +23,7 @@ def _safe_warning_type(value: str) -> str:
 
 @tool
 def save_warning_log(text_content: str, warning_type: str) -> str:
-    """将警告文本落盘到 ./data/warnning_log/YYYY-mm-DD_HH-MM-SS_<警告类型>.md。"""
+    """将警告文本落盘；warning_type 必须原样使用用户明确指定的警告类型。"""
     if not isinstance(text_content, str) or not text_content.strip():
         return json.dumps(
             {"success": False, "error": "text_content 不能为空"},

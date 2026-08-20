@@ -11,8 +11,8 @@ from loguru import logger
 from app.config import config
 
 
-def _service_unit(service_name: str) -> str | None:
-    """读取正式配置；场景策略只允许收紧白名单，不替换工具。"""
+def _managed_services() -> dict[str, str]:
+    """读取正式白名单；评测场景策略只能收紧权限，不能伪造工具结果。"""
     services = config.managed_http_services
     policy_file = os.getenv("SERVICE_POLICY_FILE", "").strip()
     if policy_file:
@@ -21,7 +21,12 @@ def _service_unit(service_name: str) -> str | None:
                 services = json.load(handle).get("managed_http_services", services)
         except (OSError, json.JSONDecodeError, AttributeError):
             services = {}
-    return services.get(service_name.strip())
+    return {str(name): str(unit) for name, unit in services.items()}
+
+
+def _service_unit(service_name: str) -> str | None:
+    """从当前正式白名单解析服务单元。"""
+    return _managed_services().get(service_name.strip())
 
 
 def _manager(unit: str) -> list[str]:
@@ -36,7 +41,7 @@ def restart_systemd_service(service_name: str) -> str:
         return json.dumps({"success": False, "error": "服务重启功能未启用"}, ensure_ascii=False)
     unit = _service_unit(service_name)
     if not unit:
-        return json.dumps({"success": False, "error": f"服务不在白名单中: {service_name}", "allowed_services": sorted(config.managed_http_services)}, ensure_ascii=False)
+        return json.dumps({"success": False, "error": f"服务不在白名单中: {service_name}", "allowed_services": sorted(_managed_services())}, ensure_ascii=False)
     try:
         manager = _manager(unit)
         restart = subprocess.run([*manager, "restart", unit], capture_output=True, text=True, timeout=config.service_restart_timeout, check=False)
