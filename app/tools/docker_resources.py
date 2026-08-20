@@ -73,6 +73,8 @@ def _result(payload: Any = None, error: str | None = None, error_code: str | Non
     """统一返回结构化 JSON，保留真实命令结果。"""
     if error:
         data: dict[str, Any] = {"success": False, "error": error, "command": "docker ps -a"}
+        if payload is not None:
+            data["data"] = payload
         if error_code:
             data["error_code"] = error_code
         return json.dumps(data, ensure_ascii=False)
