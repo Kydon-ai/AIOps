@@ -87,6 +87,16 @@ class RagAgentService:
         self.model_name = config.rag_model
         self.streaming = streaming
         self.system_prompt = self._build_system_prompt()
+        # K8s 场景的正式工具默认使用 observability 命名空间；工具顺序和
+        # 参数必须服从用户给出的证据链，不能用猜测的 monitoring 替代。
+        self.system_prompt += (
+            "\nKubernetes 诊断约束：本项目集群观测资源位于 namespace=observability；"
+            "调用 get_kubernetes_deployments/get_kubernetes_pods/get_kubernetes_events/get_kubernetes_pod_logs 时，"
+            "除非用户明确指定其他命名空间，必须传 namespace='observability'。"
+            "用户明确给出工具顺序时，按顺序逐步调用，不能因某一步返回空列表就跳过后续指定工具，"
+            "并在最终答案中引用真实 ToolMessage 结果；如果工具结果与配置描述矛盾，以工具结果为准，"
+            "不得把‘不在白名单/拒绝’改写成‘在白名单/已成功’。"
+        )
 
 
         self.model = ChatQwen(
@@ -95,6 +105,8 @@ class RagAgentService:
             base_url=config.dashscope_api_base,
             temperature=0.7,
             streaming=streaming,
+            timeout=config.dashscope_request_timeout,
+            max_retries=1,
         )
 
         # 定义基础工具（与 AIOps Planner/Executor 使用同一套默认本地工具）

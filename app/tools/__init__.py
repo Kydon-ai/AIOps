@@ -13,6 +13,15 @@ from app.tools.restart_systemd_service import restart_systemd_service
 from app.tools.save_warning_log import save_warning_log
 from app.tools.top_cpu_processes import get_top_cpu_processes
 from app.tools.time_tool import get_current_time
+from app.tools.health_check import health_check
+from app.tools.memory_diagnostics import get_memory_summary, get_top_memory_processes, get_oom_events
+from app.tools.kubernetes_resources import (
+    get_kubernetes_deployments,
+    get_kubernetes_events,
+    get_kubernetes_nodes,
+    get_kubernetes_pod_logs,
+    get_kubernetes_pods,
+)
 
 # 默认本地工具集：凡绑定「知识库 + 时间」的 Agent 应使用此元组，与 Prometheus 告警查询一并注册
 DEFAULT_LOCAL_AGENT_TOOLS = (
@@ -30,6 +39,15 @@ DEFAULT_LOCAL_AGENT_TOOLS = (
     restart_systemd_service,
     save_warning_log,
     get_top_cpu_processes,
+    health_check,
+    get_memory_summary,
+    get_top_memory_processes,
+    get_oom_events,
+    get_kubernetes_deployments,
+    get_kubernetes_pods,
+    get_kubernetes_events,
+    get_kubernetes_pod_logs,
+    get_kubernetes_nodes,
 )
 
 __all__ = [
@@ -48,4 +66,13 @@ __all__ = [
     "restart_systemd_service",
     "save_warning_log",
     "get_top_cpu_processes",
+    "health_check",
+    "get_memory_summary",
+    "get_top_memory_processes",
+    "get_oom_events",
+    "get_kubernetes_deployments",
+    "get_kubernetes_pods",
+    "get_kubernetes_events",
+    "get_kubernetes_pod_logs",
+    "get_kubernetes_nodes",
 ]

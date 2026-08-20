@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     dashscope_api_key: str = os.getenv('DASHSCOPE_API_KEY',"")  # 默认空字符串，实际使用需从环境变量加载
     dashscope_api_base:str = os.getenv('DASHSCOPE_API_BASE',"")
     dashscope_model: str = "qwen-max"
+    dashscope_request_timeout: float = 90.0
     dashscope_embedding_model: str = "text-embedding-v4"  # v4 支持多种维度（默认 1024）
 
     # Milvus 配置
@@ -64,6 +65,7 @@ class Settings(BaseSettings):
     
     # JSON 环境变量示例：{"rag":"rag.service","api":"my-api.service"}
     managed_http_services: dict[str, str] = {}
+    managed_http_service_urls: dict[str, str] = {}
     service_restart_enabled: bool = True
     service_restart_timeout: int = 30
     service_log_timeout: int = 15

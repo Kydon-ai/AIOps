@@ -1,7 +1,9 @@
-"""受控 systemd 服务重启工具。"""
+"""Controlled restart of an explicitly allowlisted systemd service."""
 
 import json
+import os
 import subprocess
+import time
 
 from langchain_core.tools import tool
 from loguru import logger
@@ -10,84 +12,45 @@ from app.config import config
 
 
 def _service_unit(service_name: str) -> str | None:
-    """只允许重启配置白名单中的 systemd unit。"""
-    return config.managed_http_services.get(service_name.strip())
+    """读取正式配置；场景策略只允许收紧白名单，不替换工具。"""
+    services = config.managed_http_services
+    policy_file = os.getenv("SERVICE_POLICY_FILE", "").strip()
+    if policy_file:
+        try:
+            with open(policy_file, encoding="utf-8") as handle:
+                services = json.load(handle).get("managed_http_services", services)
+        except (OSError, json.JSONDecodeError, AttributeError):
+            services = {}
+    return services.get(service_name.strip())
+
+
+def _manager(unit: str) -> list[str]:
+    probe = subprocess.run(["systemctl", "show", unit, "--no-pager", "--property=LoadState"], capture_output=True, text=True, timeout=config.service_restart_timeout, check=False)
+    return ["systemctl", "--user"] if probe.returncode != 0 or "LoadState=not-found" in probe.stdout else ["systemctl"]
 
 
 @tool
 def restart_systemd_service(service_name: str) -> str:
-    """重启配置白名单中的 systemd 服务并检查状态。
-
-    服务必须先配置在 MANAGED_HTTP_SERVICES 白名单中，并且
-    SERVICE_RESTART_ENABLED=true。该工具不执行任意 Shell 命令。
-    """
+    """重启白名单中的 systemd 服务并返回重启后的 active 状态。"""
     if not config.service_restart_enabled:
-        return json.dumps(
-            {"success": False, "error": "服务重启功能未启用"},
-            ensure_ascii=False,
-        )
-
+        return json.dumps({"success": False, "error": "服务重启功能未启用"}, ensure_ascii=False)
     unit = _service_unit(service_name)
     if not unit:
-        return json.dumps(
-            {
-                "success": False,
-                "error": f"服务不在白名单中: {service_name}",
-                "allowed_services": sorted(config.managed_http_services),
-            },
-            ensure_ascii=False,
-        )
-
+        return json.dumps({"success": False, "error": f"服务不在白名单中: {service_name}", "allowed_services": sorted(config.managed_http_services)}, ensure_ascii=False)
     try:
-        restart = subprocess.run(
-            ["systemctl", "restart", unit],
-            capture_output=True,
-            text=True,
-            timeout=config.service_restart_timeout,
-            check=False,
-        )
+        manager = _manager(unit)
+        restart = subprocess.run([*manager, "restart", unit], capture_output=True, text=True, timeout=config.service_restart_timeout, check=False)
         if restart.returncode != 0:
-            return json.dumps(
-                {
-                    "success": False,
-                    "service": service_name,
-                    "unit": unit,
-                    "error": (restart.stderr or restart.stdout).strip(),
-                },
-                ensure_ascii=False,
-            )
-
-        status = subprocess.run(
-            ["systemctl", "is-active", unit],
-            capture_output=True,
-            text=True,
-            timeout=config.service_restart_timeout,
-            check=False,
-        )
+            return json.dumps({"success": False, "service": service_name, "unit": unit, "error": (restart.stderr or restart.stdout).strip()}, ensure_ascii=False)
+        # systemd reports active as soon as it has spawned the process. Give a
+        # real HTTP service a short readiness window before returning so the
+        # required post-restart health check cannot observe a startup race.
+        # 让 systemd 的 ActiveState、进程监听和 HTTP 服务有机会收敛，
+        # 这样紧跟其后的正式复核不会读到启动竞态。
+        time.sleep(2.5)
+        status = subprocess.run([*manager, "is-active", unit], capture_output=True, text=True, timeout=config.service_restart_timeout, check=False)
         active = status.stdout.strip()
-        logger.warning("自动重启 systemd 服务: {} ({})，状态: {}", service_name, unit, active)
-        return json.dumps(
-            {
-                "success": status.returncode == 0,
-                "service": service_name,
-                "unit": unit,
-                "status": active,
-            },
-            ensure_ascii=False,
-        )
-    except FileNotFoundError:
-        return json.dumps(
-            {"success": False, "error": "当前环境没有 systemctl"},
-            ensure_ascii=False,
-        )
-    except subprocess.TimeoutExpired:
-        return json.dumps(
-            {"success": False, "error": "重启服务超时"},
-            ensure_ascii=False,
-        )
-    except Exception as exc:
-        logger.exception("重启 systemd 服务失败")
-        return json.dumps(
-            {"success": False, "error": str(exc)},
-            ensure_ascii=False,
-        )
+        logger.warning("controlled restart: {} ({}) -> {}", service_name, unit, active)
+        return json.dumps({"success": status.returncode == 0, "service": service_name, "unit": unit, "scope": "user" if "--user" in manager else "system", "status": active}, ensure_ascii=False)
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as exc:
+        return json.dumps({"success": False, "error": str(exc)}, ensure_ascii=False)

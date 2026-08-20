@@ -7,7 +7,6 @@ from langchain_core.tools import tool
 from loguru import logger
 
 from app.config import config
-from app.services.vector_store_manager import vector_store_manager
 
 
 @tool(response_format="content_and_artifact")
@@ -23,6 +22,9 @@ def retrieve_knowledge(query: str) -> Tuple[str, List[Document]]:
         Tuple[str, List[Document]]: (格式化的上下文文本, 原始文档列表)
     """
     try:
+        # Keep Milvus initialization out of module import. Read-only system
+        # diagnosis should not block on an unrelated vector database.
+        from app.services.vector_store_manager import vector_store_manager
         logger.info(f"知识检索工具被调用: query='{query}'")
         
         # 从向量存储中检索相关文档
