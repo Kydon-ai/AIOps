@@ -220,6 +220,12 @@ def score_case(case: dict[str, Any], answer: str, calls: list[dict[str, Any]], t
         else:
             matched = term_text in result_lower
         check(f"tool_result:{term}", matched, {"term": term})
+    repaired_answer = repair_text(answer)
+    if "不在白名单" in result_text:
+        # 工具明确拒绝时，答案不得再声称服务位于白名单；这是证据一致性
+        # 检查，不是对答案措辞的偏好。
+        contradictory = bool(re.search(r"(?:dblog-backend|服务)[^。\n]{0,30}(?<!不)(?:在|位于)白名单", repaired_answer))
+        check("answer_consistent_with_allowlist_result", not contradictory, {"answer": repaired_answer})
 
     for term in reference.get("must_include", []):
         # 参考答案中的中文短语是可解释评分线索；数字、服务名和关键状态必须出现。
