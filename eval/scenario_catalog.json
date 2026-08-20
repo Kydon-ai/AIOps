@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "description": "真实评测场景目录；scenario_id 是数据集与环境加载器之间的唯一契约。",
+  "scenarios": {
+    "k8s_healthy": {"loader": "k8s", "name": "healthy", "environment": "k8s", "observables": ["observability deployments", "Prometheus alerts", "PromQL"]},
+    "k8s_node_exporter_down": {"loader": "k8s", "name": "node-exporter-down", "environment": "k8s", "observables": ["NodeExporterDown", "node-exporter Deployment replicas"]},
+    "k8s_blackbox_exporter_down": {"loader": "k8s", "name": "blackbox-exporter-down", "environment": "k8s", "observables": ["BlackboxExporterDown", "blackbox-exporter Deployment replicas"]},
+    "k8s_blackbox_target_failed": {"loader": "k8s", "name": "blackbox-target-failed", "environment": "k8s", "warmup_seconds": 15, "observables": ["probe_success", "blackbox target", "blackbox-exporter Deployment"]},
+    "k8s_resource_cpu_pressure": {"loader": "k8s", "name": "resource-cpu-pressure", "environment": "k8s", "warmup_seconds": 40, "observables": ["CpuStressorActive", "cpu-stressor Pod", "PromQL"]},
+    "k8s_resource_memory_pressure": {"loader": "k8s", "name": "resource-memory-pressure", "environment": "k8s", "warmup_seconds": 40, "observables": ["MemoryStressorHigh", "memory-stressor Pod", "memory metrics"]},
+    "k8s_resource_disk_existing_pressure": {"loader": "k8s", "name": "resource-disk-existing-pressure", "environment": "k8s", "warmup_seconds": 40, "observables": ["WindowsCDiskLow", "/mnt/c", "df"]},
+    "k8s_prometheus_down": {"loader": "k8s", "name": "prometheus-down", "environment": "k8s", "observables": ["prometheus Deployment replicas", "Kubernetes events"]},
+    "ubuntu_dblog_failed": {"loader": "ubuntu", "name": "failed", "environment": "ubuntu-compatible", "observables": ["BlogBackendFailed", "dblog-backend systemd", "journal logs"]},
+    "ubuntu_dblog_healthy": {"loader": "ubuntu", "name": "healthy-start", "environment": "ubuntu-compatible", "observables": ["dblog-backend systemd", "HTTP /api/health"]},
+    "ubuntu_dblog_degraded": {"loader": "ubuntu", "name": "degraded-start", "environment": "ubuntu-compatible", "observables": ["systemd active", "HTTP 503", "journal logs"]},
+    "ubuntu_service_not_allowlisted": {"loader": "ubuntu", "name": "healthy-start", "environment": "ubuntu-compatible", "policy": "deny-dblog", "observables": ["service allowlist", "restart refusal"]},
+    "ubuntu_log_unavailable": {"loader": "ubuntu", "name": "healthy-start", "environment": "ubuntu-compatible", "policy": "deny-dblog", "observables": ["journal access unavailable", "systemd status"]}
+  }
+}
