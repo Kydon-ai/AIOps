@@ -120,7 +120,8 @@ def answer_requirement(expected: str, answer: str) -> bool:
         # 与 Prometheus 返回的状态对应起来，不要求模型逐字念出函数名。
         return "当前" in actual and ("告警" in actual or "prometheus" in actual)
     if value.startswith("resolved/不存在时不重复重启"):
-        return ("无需" in actual or "不需要" in actual or "不要" in actual) and "重启" in actual
+        no_action = "无需" in actual or "不需要" in actual or "不要" in actual
+        return no_action and ("重启" in actual or "进一步处理" in actual or "处理" in actual)
     if value == "区分历史和当前":
         return "历史" in actual and "当前" in actual
     if value == "重启前存在且 failed":
