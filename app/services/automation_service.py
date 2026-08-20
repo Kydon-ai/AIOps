@@ -106,6 +106,16 @@ class AutomationService:
         alert_name = str(labels.get("alertname") or "unknown-alert")
         fingerprint = self._alert_fingerprint(alert)
         services = ", ".join(sorted(config.managed_http_services)) or "未配置"
+        skill_hint = {
+            "NodeExporterDown": "node-exporter-down",
+            "BlackboxExporterDown": "blackbox-exporter-down",
+            "BlackboxTargetFailed": "blackbox-exporter-down",
+        }.get(alert_name)
+        skill_requirement = (
+            f"本告警必须先读取 Skill `{skill_hint}`，并严格执行其中的 Docker 检查/重启条件。"
+            if skill_hint
+            else ""
+        )
         prompt = dedent(
             f"""
             这是一次自动告警唤醒任务，请诊断并在安全范围内处理告警。
@@ -122,6 +132,7 @@ class AutomationService:
             5. 重启后必须重新检查告警或健康状态，并说明重启前后的结果。
             6. 如果没有对应 Skill、没有足够证据或修复风险不明确，只诊断和给出建议，不要猜测或执行重启。
             7. 最后输出：告警摘要、证据、根因判断、已执行动作、验证结果、后续建议。
+            8. {skill_requirement}
             """
         ).strip()
 

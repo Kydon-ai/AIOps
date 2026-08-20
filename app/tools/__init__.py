@@ -22,6 +22,7 @@ from app.tools.kubernetes_resources import (
     get_kubernetes_pod_logs,
     get_kubernetes_pods,
 )
+from app.tools.docker_resources import get_docker_containers, restart_docker_container
 
 # 默认本地工具集：凡绑定「知识库 + 时间」的 Agent 应使用此元组，与 Prometheus 告警查询一并注册
 DEFAULT_LOCAL_AGENT_TOOLS = (
@@ -48,6 +49,8 @@ DEFAULT_LOCAL_AGENT_TOOLS = (
     get_kubernetes_events,
     get_kubernetes_pod_logs,
     get_kubernetes_nodes,
+    get_docker_containers,
+    restart_docker_container,
 )
 
 __all__ = [
@@ -75,4 +78,6 @@ __all__ = [
     "get_kubernetes_events",
     "get_kubernetes_pod_logs",
     "get_kubernetes_nodes",
+    "get_docker_containers",
+    "restart_docker_container",
 ]
