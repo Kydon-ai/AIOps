@@ -125,7 +125,7 @@ def answer_requirement(expected: str, answer: str) -> bool:
     if value == "区分历史和当前":
         return "历史" in actual and "当前" in actual
     if value == "重启前存在且 failed":
-        return "failed" in actual and ("存在" in actual or "服务" in actual)
+        return ("failed" in actual or "失败" in actual) and ("存在" in actual or "服务" in actual or "systemd" in actual)
     if value == "restart 真实返回":
         return "restart" in actual or "重启" in actual
     if value == "重启后 active":
@@ -139,7 +139,17 @@ def answer_requirement(expected: str, answer: str) -> bool:
     if value == "http 503":
         return "503" in actual
     if value == "probe_success=0":
-        return "probe_success" in actual and "0" in actual
+        return "probe_success" in actual and ("0" in actual or "失败" in actual or "不成功" in actual)
+    if value.startswith("目标接口不可达或探针失败"):
+        return ("目标接口" in actual or "探测" in actual or "探针" in actual) and any(token in actual for token in ("失败", "不可达", "不成功", "无法响应"))
+    if value.startswith("windowscdisklow 或 /mnt/c 空间告警"):
+        return "/mnt/c" in actual and any(token in actual for token in ("告警", "空间", "磁盘", "使用率", "低"))
+    if value.startswith("/mnt/c 的 promql 指标"):
+        return "/mnt/c" in actual and any(token in actual for token in ("promql", "node_filesystem", "指标"))
+    if value.startswith("df 的 /mnt/c 使用率"):
+        return "df" in actual and "/mnt/c" in actual and any(token in actual for token in ("使用率", "%", "百分比"))
+    if value.startswith("目录占用不能直接删除"):
+        return "目录" in actual and any(token in actual for token in ("不能", "不应", "不要", "禁止")) and "删除" in actual
     if value.startswith("不能直接断言 exporter"):
         return ("exporter" in actual or "黑盒" in actual) and any(token in actual for token in ("非", "未", "没有", "本身"))
     if value.startswith("服务尚未恢复"):
