@@ -1,7 +1,9 @@
 // SuperBizAgent 前端应用
 class SuperBizAgentApp {
     constructor() {
-        this.apiBaseUrl = 'http://www.qidong.tech:9900/api';
+        // 前端由同一个 FastAPI 服务提供，使用同源地址即可跟随 .env 中的 host/port。
+        // 不要在浏览器端读取或暴露后端 .env；如果未来前后端分离，再通过构建配置注入绝对地址。
+        this.apiBaseUrl = '/api';
         this.currentMode = 'quick'; // 'quick' 或 'stream'
         this.sessionId = this.generateSessionId();
         this.isStreaming = false;
