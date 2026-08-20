@@ -168,6 +168,17 @@ uv run python -m app.mcp_servers.systemd_service
 该 MCP 提供 `check_systemd_service` 和 `restart_systemd_service`，重启同样受
 `MANAGED_HTTP_SERVICES` 与 `SERVICE_RESTART_ENABLED` 保护。
 
+Node Exporter 和 Blackbox Exporter 还提供独立的 Docker MCP 服务，默认地址为
+`http://127.0.0.1:8007/mcp`，启动命令为：
+
+```bash
+uv run python -m app.mcp_servers.docker_exporter
+```
+
+该 MCP 固定执行 `docker ps -a` 查找对应容器，只允许唯一匹配且已停止的
+`node_exporter` 或 `blackbox_exporter` 容器重启。Docker 不存在或没有匹配容器时
+返回真实错误，不会把 K3s/containerd Pod 当作 Docker 容器。
+
 服务器上建议配置：
 
 ```env
@@ -178,6 +189,7 @@ AUTOMATION_PATROL_INTERVAL=3600
 EXPERIENCE_EXTRACTION_ENABLED=true
 EXPERIENCE_FILE=./data/通用经验.md
 SKILLS_DIR=./skills
+DOCKER_MCP_URL=http://127.0.0.1:8007/mcp
 
 # 默认关闭，确认权限和 Skill 完整后再打开
 SERVICE_RESTART_ENABLED=false

@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     mcp_cls_url: str = "http://localhost:8003/mcp"
     mcp_monitor_transport: str = "streamable-http"
     mcp_monitor_url: str = "http://localhost:8004/mcp"
+    docker_mcp_transport: str = "streamable-http"
+    docker_mcp_url: str = "http://localhost:8007/mcp"
 
     # Prometheus
     prometheus_base_url: str = ""
@@ -93,6 +95,10 @@ class Settings(BaseSettings):
             "monitor": {
                 "transport": self.mcp_monitor_transport,
                 "url": self.mcp_monitor_url,
+            },
+            "docker": {
+                "transport": self.docker_mcp_transport,
+                "url": self.docker_mcp_url,
             }
         }
 
