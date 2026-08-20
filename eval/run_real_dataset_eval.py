@@ -12,7 +12,10 @@ import asyncio
 import json
 import os
 import re
+import signal
+import subprocess
 import sys
+import tempfile
 import time
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -256,6 +259,65 @@ async def ask(service: Any, question: str, session_id: str) -> dict[str, Any]:
     return {"answer": answer, "tool_calls": calls, "trajectory": trajectory, "latency_ms": round((time.perf_counter() - started) * 1000, 1)}
 
 
+def run_case_isolated(row: dict[str, Any], timeout: int) -> dict[str, Any]:
+    """为每条题目启动独立 worker，超时后杀死整个进程，避免污染后续场景。"""
+    with tempfile.TemporaryDirectory(prefix="real-eval-case-", dir=str(ROOT / "eval")) as temp_dir:
+        temp = Path(temp_dir)
+        row_path = temp / "row.json"
+        output_path = temp / "result.json"
+        row_path.write_text(json.dumps(row, ensure_ascii=False), encoding="utf-8")
+        command = [
+            sys.executable,
+            str(ROOT / "eval" / "real_case_worker.py"),
+            "--row",
+            str(row_path),
+            "--output",
+            str(output_path),
+            "--session-id",
+            f"real-dataset-{row['id']}",
+        ]
+        creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
+        process = subprocess.Popen(
+            command,
+            cwd=ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=os.name != "nt",
+            creationflags=creationflags,
+        )
+        try:
+            stdout, stderr = process.communicate(timeout=max(10, int(timeout)))
+        except subprocess.TimeoutExpired:
+            # 单独进程是硬超时边界；不能只取消协程，因为底层 HTTP 调用可能不响应取消。
+            if os.name == "nt":
+                process.kill()
+            else:
+                os.killpg(process.pid, signal.SIGKILL)
+            stdout, stderr = process.communicate()
+            return {
+                "answer": "",
+                "tool_calls": [],
+                "trajectory": [],
+                "latency_ms": int(timeout) * 1000,
+                "error": "agent case timeout",
+                "worker_stdout": stdout[-4000:],
+                "worker_stderr": stderr[-4000:],
+            }
+
+        if output_path.exists():
+            try:
+                item = json.loads(output_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                item = {"answer": "", "tool_calls": [], "trajectory": [], "error": f"invalid worker JSON: {exc}"}
+        else:
+            item = {"answer": "", "tool_calls": [], "trajectory": [], "error": f"worker exited with code {process.returncode}"}
+        if process.returncode != 0:
+            item.setdefault("worker_stdout", stdout[-4000:])
+            item.setdefault("worker_stderr", stderr[-4000:])
+        return item
+
+
 def evaluation_question(row: dict[str, Any]) -> str:
     """把数据集声明的理论轨迹明确传给 Agent，避免顺序约束只存在于评分器。"""
     order = row.get("theory", {}).get("tool_order") or []
@@ -282,8 +344,9 @@ async def main() -> int:
     selected = [row for row in rows if not args.ids or row["id"] in set(args.ids)]
     if args.max_cases:
         selected = selected[: args.max_cases]
+    # 只从正式服务实例读取工具注册表；每道题实际运行在 real_case_worker.py，
+    # 因此单个模型请求卡住时不会阻塞后续场景。
     service = RagAgentService(streaming=False)
-    await service._initialize_agent()
     result: dict[str, Any] = {"timestamp": datetime.now(timezone.utc).isoformat(), "dataset": str(DATASET.relative_to(ROOT)), "tool_registry": [getattr(tool, "name", str(tool)) for tool in service.tools], "cases": [], "notes": ["真实入口：未注入 fixture，保留完整消息和 ToolMessage。"]}
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in selected:
@@ -294,14 +357,7 @@ async def main() -> int:
             load_info = load_scenario(scenario_id)
             for row in scenario_rows:
                 print(f"  [case] {row['id']}", flush=True)
-                try:
-                    item = await asyncio.wait_for(
-                        ask(service, evaluation_question(row), f"real-dataset-{row['id']}"),
-                        timeout=max(10, args.case_timeout),
-                    )
-                except asyncio.TimeoutError:
-                    # 单条超时不能吞掉前面案例的轨迹；将超时作为明确失败记录。
-                    item = {"answer": "", "tool_calls": [], "trajectory": [], "latency_ms": args.case_timeout * 1000, "error": "agent case timeout"}
+                item = run_case_isolated(row, args.case_timeout)
                 validation = score_case(row, item["answer"], item["tool_calls"], item["trajectory"])
                 result["cases"].append({"id": row["id"], "target_metric": row["target_metric"], "scenario_id": scenario_id, "question": row["question"], "load": load_info, **item, "validation": validation})
     finally:
