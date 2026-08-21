@@ -32,6 +32,8 @@ RESULTS = ROOT / "eval" / "results"
 def setup_environment() -> None:
     """让正式工具连接本地 K8s Prometheus，不改变工具对象。"""
     load_dotenv(ROOT / ".env", override=True)
+    # Local scenario evaluation explicitly enables the local K8s tool set.
+    os.environ["ENV_FLAG"] = "evaluation"
     os.environ["PROMETHEUS_BASE_URL"] = "http://127.0.0.1:9090"
     os.environ["AUTOMATION_ENABLED"] = "false"
     os.environ["EXPERIENCE_EXTRACTION_ENABLED"] = "false"
