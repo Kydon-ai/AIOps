@@ -4,7 +4,7 @@ class SuperBizAgentApp {
         // 前端由同一个 FastAPI 服务提供，使用同源地址即可跟随 .env 中的 host/port。
         // 不要在浏览器端读取或暴露后端 .env；如果未来前后端分离，再通过构建配置注入绝对地址。
         this.apiBaseUrl = '/api';
-        this.currentMode = 'quick'; // 'quick' 或 'stream'
+        this.currentMode = 'stream'; // 'quick' 或 'stream'
         this.sessionId = this.generateSessionId();
         this.isStreaming = false;
         this.currentChatHistory = []; // 当前对话的消息历史
@@ -117,6 +117,7 @@ class SuperBizAgentApp {
         this.loadingOverlay = document.getElementById('loadingOverlay');
         this.chatContainer = document.querySelector('.chat-container');
         this.welcomeGreeting = document.getElementById('welcomeGreeting');
+        this.promptSuggestions = document.getElementById('promptSuggestions');
         this.chatHistoryList = document.getElementById('chatHistoryList');
         
         // 初始化时检查是否需要居中
@@ -172,6 +173,26 @@ class SuperBizAgentApp {
                     e.preventDefault();
                     this.sendMessage();
                 }
+            });
+        }
+
+        // 默认开场问题：点击后直接填入并发送，和手动输入使用同一条消息链路
+        if (this.promptSuggestions) {
+            this.promptSuggestions.addEventListener('click', (e) => {
+                const suggestion = e.target.closest('[data-prompt]');
+                if (!suggestion || this.isStreaming) {
+                    return;
+                }
+
+                e.preventDefault();
+                const prompt = suggestion.getAttribute('data-prompt');
+                if (!prompt || !this.messageInput) {
+                    return;
+                }
+
+                this.messageInput.value = prompt;
+                this.messageInput.focus();
+                void this.sendMessage();
             });
         }
         
@@ -620,6 +641,18 @@ class SuperBizAgentApp {
             this.messageInput.disabled = this.isStreaming;
             this.messageInput.placeholder = '问问智能OnCall助手';
         }
+
+        this.updatePromptSuggestions();
+    }
+
+    // 只有空白会话显示推荐开场问题，进入对话或请求处理中自动隐藏
+    updatePromptSuggestions() {
+        if (!this.promptSuggestions || !this.chatMessages) {
+            return;
+        }
+
+        const hasMessages = this.chatMessages.querySelectorAll('.message').length > 0;
+        this.promptSuggestions.hidden = hasMessages || this.isStreaming;
     }
 
     // 生成随机会话ID
@@ -1010,6 +1043,8 @@ class SuperBizAgentApp {
             } else {
                 this.chatContainer.classList.remove('centered');
             }
+
+            this.updatePromptSuggestions();
         }
     }
 

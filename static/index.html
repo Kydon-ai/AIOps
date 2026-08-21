@@ -53,6 +53,56 @@
                 <div class="welcome-greeting" id="welcomeGreeting">
                     <p>你好！我是智能运维小助手</p>
                 </div>
+                <section class="prompt-suggestions" id="promptSuggestions" aria-label="推荐开场问题">
+                    <div class="prompt-suggestions-header">
+                        <span class="prompt-suggestions-title">你可以这样开始</span>
+                        <span class="prompt-suggestions-hint">点击问题即可开始诊断</span>
+                    </div>
+                    <div class="prompt-suggestions-grid">
+                        <button type="button" class="prompt-suggestion" data-prompt="帮我检查当前系统的整体健康状态，并列出异常证据">
+                            <span class="prompt-suggestion-icon" aria-hidden="true">⌁</span>
+                            <span class="prompt-suggestion-content">
+                                <strong>检查系统健康状态</strong>
+                                <span>快速发现当前异常和影响范围</span>
+                            </span>
+                        </button>
+                        <button type="button" class="prompt-suggestion" data-prompt="检查 Prometheus 当前告警，并分析最可能的影响范围">
+                            <span class="prompt-suggestion-icon" aria-hidden="true">◌</span>
+                            <span class="prompt-suggestion-content">
+                                <strong>查看 Prometheus 告警</strong>
+                                <span>汇总告警并给出可验证的分析</span>
+                            </span>
+                        </button>
+                        <button type="button" class="prompt-suggestion" data-prompt="检查 node_exporter、blackbox_exporter 和相关目标是否正常">
+                            <span class="prompt-suggestion-icon" aria-hidden="true">◈</span>
+                            <span class="prompt-suggestion-content">
+                                <strong>检查监控组件</strong>
+                                <span>确认 Node、Blackbox 和探测目标状态</span>
+                            </span>
+                        </button>
+                        <button type="button" class="prompt-suggestion" data-prompt="帮我查看最近的系统服务日志，判断是否存在需要处理的问题">
+                            <span class="prompt-suggestion-icon" aria-hidden="true">≋</span>
+                            <span class="prompt-suggestion-content">
+                                <strong>分析系统服务日志</strong>
+                                <span>从近期日志中定位潜在故障线索</span>
+                            </span>
+                        </button>
+                        <button type="button" class="prompt-suggestion systemctl-presentation" data-prompt="帮我关闭运行在 18082 端口上的 HTTP 接口服务。它叫 demo-http-1，旁边两个端口还有类似的服务，请先帮我关闭这个服务。">
+                            <span class="prompt-suggestion-icon" aria-hidden="true">⏹</span>
+                            <span class="prompt-suggestion-content">
+                                <strong>关闭指定 HTTP 服务</strong>
+                                <span>通过 systemd 停止 demo-http-1，并确认服务状态</span>
+                            </span>
+                        </button>
+                        <button type="button" class="prompt-suggestion docker-detection" data-prompt="帮我检查 Docker 服务有没有挂掉，如果有的话请帮我重新启动。">
+                            <span class="prompt-suggestion-icon" aria-hidden="true">↻</span>
+                            <span class="prompt-suggestion-content">
+                                <strong>检查并恢复 Docker 服务</strong>
+                                <span>发现异常容器后尝试重启，并汇报处理结果</span>
+                            </span>
+                        </button>
+                    </div>
+                </section>
                 <div class="chat-messages" id="chatMessages">
                 </div>
                 
@@ -81,7 +131,7 @@
                                 <div class="right-actions">
                                     <div class="mode-selector-wrapper">
                                         <button class="mode-selector-btn" id="modeSelectorBtn">
-                                            <span id="currentModeText">快速</span>
+                                            <span id="currentModeText">流式</span>
                                             <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                 <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                             </svg>

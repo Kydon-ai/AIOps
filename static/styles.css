@@ -337,6 +337,116 @@ body {
     font-weight: 400;
 }
 
+.prompt-suggestions {
+    width: min(800px, calc(100% - 40px));
+    margin: 0 auto 20px;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.prompt-suggestions[hidden] {
+    display: none;
+}
+
+.prompt-suggestions-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    color: #5f6368;
+}
+
+.prompt-suggestions-title {
+    color: #3c4043;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.prompt-suggestions-hint {
+    font-size: 12px;
+}
+
+.prompt-suggestions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.prompt-suggestion {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-height: 78px;
+    padding: 14px 16px;
+    border: 1px solid #e0e3e7;
+    border-radius: 14px;
+    background: #ffffff;
+    color: #202124;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.prompt-suggestion:hover {
+    border-color: #8ab4f8;
+    box-shadow: 0 4px 12px rgba(26, 115, 232, 0.12);
+    transform: translateY(-1px);
+}
+
+.prompt-suggestion:focus-visible {
+    outline: 3px solid rgba(26, 115, 232, 0.25);
+    outline-offset: 2px;
+}
+
+.prompt-suggestion-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    border-radius: 9px;
+    background: #e8f0fe;
+    color: #1a73e8;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.prompt-suggestion-content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.prompt-suggestion-content strong {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.prompt-suggestion-content span {
+    color: #5f6368;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+@media (max-width: 680px) {
+    .prompt-suggestions {
+        width: calc(100% - 32px);
+        margin-bottom: 16px;
+    }
+
+    .prompt-suggestions-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .prompt-suggestions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* 消息样式 */
 .message {
     margin-bottom: 24px;
