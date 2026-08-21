@@ -4,7 +4,8 @@
 """
 
 import os
-from typing import  Any
+from typing import Any
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,6 +25,9 @@ class Settings(BaseSettings):
     debug: bool = False
     host: str = "0.0.0.0"
     port: int = 9900
+
+    # Runtime mode. Production must not register local Kubernetes tools.
+    env_flag: str = "development"
 
     # DashScope 配置
     dashscope_api_key: str = os.getenv('DASHSCOPE_API_KEY',"")  # 默认空字符串，实际使用需从环境变量加载
@@ -56,6 +60,8 @@ class Settings(BaseSettings):
     mcp_monitor_url: str = "http://localhost:8004/mcp"
     docker_mcp_transport: str = "streamable-http"
     docker_mcp_url: str = "http://localhost:8007/mcp"
+    systemd_mcp_transport: str = "streamable-http"
+    systemd_mcp_url: str = "http://localhost:8006/mcp"
 
     # Prometheus
     prometheus_base_url: str = ""
@@ -67,8 +73,13 @@ class Settings(BaseSettings):
     
     # JSON 环境变量示例：{"rag":"rag.service","api":"my-api.service"}
     managed_http_services: dict[str, str] = {}
+    # Disposable/test services may be placed here.  Tools resolve this map
+    # before the normal allowlist. Destructive actions are limited to this
+    # explicitly configured set when the corresponding action is enabled.
+    managed_http_greylist: dict[str, str] = {}
     managed_http_service_urls: dict[str, str] = {}
     service_restart_enabled: bool = True
+    service_stop_enabled: bool = False
     service_restart_timeout: int = 30
     service_log_timeout: int = 15
     automation_enabled: bool = True
@@ -83,6 +94,23 @@ class Settings(BaseSettings):
     webhook_url: str = ""
     webhook_timeout: float = 10.0
     notification_enabled: bool = True
+
+    @field_validator("env_flag")
+    @classmethod
+    def normalize_env_flag(cls, value: str) -> str:
+        aliases = {
+            "prod": "production",
+            "production": "production",
+            "eval": "evaluation",
+            "test": "evaluation",
+            "evaluation": "evaluation",
+            "dev": "development",
+            "development": "development",
+        }
+        normalized = str(value).strip().lower()
+        if normalized not in aliases:
+            raise ValueError("ENV_FLAG must be one of: production, evaluation, development")
+        return aliases[normalized]
 
     @property
     def mcp_servers(self) -> dict[str, dict[str, Any]]:
@@ -99,6 +127,10 @@ class Settings(BaseSettings):
             "docker": {
                 "transport": self.docker_mcp_transport,
                 "url": self.docker_mcp_url,
+            },
+            "systemd": {
+                "transport": self.systemd_mcp_transport,
+                "url": self.systemd_mcp_url,
             }
         }
 

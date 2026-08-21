@@ -23,7 +23,11 @@ from langchain_qwq import ChatQwen
 from app.config import config
 from app.tools import DEFAULT_LOCAL_AGENT_TOOLS
 from app.services.operation_memory_service import operation_memory_service
-from app.agent.mcp_client import format_exception_chain
+from app.agent.mcp_client import (
+    format_exception_chain,
+    get_mcp_client_with_retry,
+    load_mcp_tools_safe,
+)
 
 # 阿里千问大模型和langchain集成参考： https://docs.langchain.com/oss/python/integrations/chat/qwen
 # 注意：需要配置环境变量 DASHSCOPE_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1 否则默认访问的是新加坡站点
@@ -104,6 +108,13 @@ class RagAgentService:
         )
 
 
+        self.system_prompt += (
+            "\nSystemd action policy: greylist services are matched before the normal allowlist. "
+            f"Configured greylist names: {sorted(config.managed_http_greylist)}. "
+            "For an explicit user request, restart_systemd_service or stop_systemd_service may "
+            "be attempted, but the tools enforce state checks and exact greylist membership."
+        )
+
         self.model = ChatQwen(
             model=self.model_name,
             api_key=config.dashscope_api_key,
@@ -154,7 +165,25 @@ class RagAgentService:
         if self._agent_initialized:
             return
 
-        all_tools = self.tools
+        all_tools = list(self.tools)
+        mcp_tools = []
+        if config.env_flag == "production":
+            # Production systemd mutations must go through the formal MCP;
+            # local systemd mutation tools are intentionally excluded above.
+            systemd_servers = {"systemd": config.mcp_servers["systemd"]}
+            mcp_client = await get_mcp_client_with_retry(
+                servers=systemd_servers,
+                force_new=True,
+            )
+            mcp_tools, mcp_error = await load_mcp_tools_safe(mcp_client)
+            if mcp_error:
+                logger.warning("systemd MCP tools unavailable: {}", mcp_error)
+            else:
+                logger.info(
+                    "Loaded formal systemd MCP tools: {}",
+                    ", ".join(tool.name for tool in mcp_tools if hasattr(tool, "name")),
+                )
+            all_tools.extend(mcp_tools)
 
         self.agent = create_agent(
             self.model,
@@ -167,7 +196,20 @@ class RagAgentService:
 
         if all_tools:
             tool_names = [tool.name if hasattr(tool, "name") else str(tool) for tool in all_tools]
-            logger.info(f"可用工具列表: {', '.join(tool_names)}")
+            local_k8s_names = {
+                "get_kubernetes_deployments",
+                "get_kubernetes_pods",
+                "get_kubernetes_events",
+                "get_kubernetes_pod_logs",
+                "get_kubernetes_nodes",
+            }
+            local_k8s_enabled = bool(local_k8s_names.intersection(tool_names))
+            logger.info(
+                "Agent tool registry initialized: env_flag={}, local_k8s_tools={}, tools={}",
+                config.env_flag,
+                "enabled" if local_k8s_enabled else "disabled",
+                ", ".join(tool_names),
+            )
 
     def _build_system_prompt(self) -> str:
         """
