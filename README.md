@@ -195,9 +195,18 @@ DOCKER_MCP_URL=http://127.0.0.1:8007/mcp
 # 默认关闭，确认权限和 Skill 完整后再打开
 SERVICE_RESTART_ENABLED=false
 MANAGED_HTTP_SERVICES='{"rag":"rag.service","8001":"endpoint.service","dblog-backend":"dblog-backend.service"}'
+MANAGED_HTTP_GREYLIST='{"demo-test":"demo-test.service"}'
+SERVICE_STOP_ENABLED=false
+SYSTEMD_MCP_URL=http://127.0.0.1:8006/mcp
 ```
 
+`MANAGED_HTTP_GREYLIST` 的解析优先级高于 `MANAGED_HTTP_SERVICES`；同名配置以灰名单映射为准。灰名单操作不会绕过安全状态检查：restart 仅在服务处于 `failed/inactive/dead` 时执行，active 服务会返回 skipped；stop 仅对 active 的灰名单服务执行。stop 只接受灰名单服务名，不会对普通白名单服务执行。
+
+生产模式下，Agent 会从 `SYSTEMD_MCP_URL` 加载 `check_systemd_service`、`restart_systemd_service` 和 `stop_systemd_service`；本地 systemd 变更工具不会重复注册。WSL 中的 `systemd-mcp.service` 负责提供该 MCP。
+
 `restart_systemd_service` 使用 `systemctl` 重启白名单中的服务，并检查 `systemctl is-active` 状态。没有 Skill、证据不足或服务不在白名单时，Agent 不应执行重启。该工具不负责 HTTP 健康检查。
+
+白名单校验通过后，工具会先检查服务状态：已处于 `active` 时返回 `restarted=false` 并跳过重启；只有 `failed`、`inactive` 或 `dead` 状态才允许执行重启；状态未知或处于过渡状态时会安全跳过并报告原因。
 
 自动巡查和告警诊断报告只写入 `data/operation_records/`，方便人工审核，不会自动进入向量库。用户对话完成后会由 LLM 判断是否包含可复用经验；只有筛选通过的内容才会追加到 `data/通用经验.md`，并且只对这个文件建立向量索引。
 
