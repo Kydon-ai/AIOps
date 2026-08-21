@@ -376,14 +376,19 @@ body {
     display: flex;
     align-items: flex-start;
     gap: 12px;
+    width: 100%;
     min-height: 78px;
     padding: 14px 16px;
     border: 1px solid #e0e3e7;
     border-radius: 14px;
     background: #ffffff;
     color: #202124;
+    font: inherit;
+    line-height: 1.4;
     text-align: left;
     cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
